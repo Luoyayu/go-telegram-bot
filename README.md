@@ -1,3 +1,5 @@
+[![Coverage Status](https://coveralls.io/repos/github/Luoyayu/go-telegram-bot/badge.svg?branch=master)](https://coveralls.io/github/Luoyayu/go-telegram-bot?branch=master) 
+
 # env variable
 
 export TELEGRAM_APITOKEN=""   
