@@ -1,0 +1,17 @@
+dist: xenial
+
+language: go
+
+git:
+  depth: 1
+
+go: "1.13.3"
+
+env: GO111MODULE=on
+
+script:
+  - bash build.sh linux
+
+after_success:
+  - $GOPATH/bin/goveralls -coverprofile=overalls.coverprofile -service=travis-ci
+
