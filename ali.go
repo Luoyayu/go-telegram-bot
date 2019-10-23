@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	AliSDK "github.com/aliyun/alibaba-cloud-sdk-go/sdk"
 	AliHttp "github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
 	"io/ioutil"
@@ -27,7 +26,7 @@ func GetTokenFromSDK() (token string, errString string) {
 		os.Getenv("ALI_ACCESS_KEYID"),
 		os.Getenv("ALI_ACCESS_KEYSECRET"))
 	if err != nil {
-		log.Println(err)
+		Logger.Error(err)
 	}
 	request := AliHttp.NewCommonRequest()
 	request.Method = "POST"
@@ -36,6 +35,7 @@ func GetTokenFromSDK() (token string, errString string) {
 	request.Version = "2019-02-28"
 	response, err := client.ProcessCommonRequest(request)
 	if err != nil {
+		Logger.Error(err)
 		return "", err.Error()
 	}
 	errString = response.GetHttpContentString()
@@ -45,9 +45,9 @@ func GetTokenFromSDK() (token string, errString string) {
 		var result GetTokenFromSDKType
 		err = json.Unmarshal(response.GetHttpContentBytes(), &result)
 		if err != nil {
-			log.Println(err)
+			Logger.Error(err)
 		} else {
-			log.Printf("%+v\n", result)
+			Logger.Infof("%+v\n", result)
 			token = result.TokenType.Id
 		}
 		return token, errString
@@ -78,15 +78,16 @@ func handleVoiceMsg2Text(
 	if enableVoiceDetection {
 		asrUrl = asrUrl + "&enable_voice_detection=" + "false"
 	}
-	log.Println(asrUrl)
+	Logger.Info(asrUrl)
 
 	audioData, err := ioutil.ReadFile(fileName)
 	if err != nil {
-		log.Println(err)
+		Logger.Error(err)
 	}
 	request, err := http.NewRequest("POST", asrUrl, bytes.NewBuffer(audioData))
 	if err != nil {
-		log.Println(err)
+		Logger.Error(err)
+
 	}
 
 	request.Header.Add("X-NLS-Token", token)
@@ -96,26 +97,29 @@ func handleVoiceMsg2Text(
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
+		Logger.Error(err)
 		resultMap.Error = err
 		return resultMap
 	} else {
 		defer response.Body.Close()
 	}
 
-	body, _ := ioutil.ReadAll(response.Body)
-	fmt.Println(string(body))
+	//body, _ := ioutil.ReadAll(response.Body)
 	statusCode := response.StatusCode
 
-	err = json.Unmarshal(body, &resultMap)
+	decoder := json.NewDecoder(response.Body)
+	err = decoder.Decode(&resultMap)
+
+	//err = json.Unmarshal(body, &resultMap)
 	if err != nil {
-		log.Println(err)
+		Logger.Error(err)
 	}
 
 	if statusCode == 200 {
 		var result = resultMap.Result
-		fmt.Println("recognition succeed ：" + result)
+		Logger.Info("recognition succeed ：" + result)
 	} else {
-		fmt.Println("recognition failed，HTTP StatusCode: " + strconv.Itoa(statusCode))
+		Logger.Error("recognition failed，HTTP StatusCode: " + strconv.Itoa(statusCode))
 	}
 	return resultMap
 }

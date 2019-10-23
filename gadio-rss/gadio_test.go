@@ -13,7 +13,6 @@ func TestGetGadioList(t *testing.T) {
 		log.Println(err)
 		assert.Fail(t, err.Error())
 	} else {
-		log.Println(len(*radios.Included), *radios.Included)
 		log.Println(len(*radios.Data), *radios.Data)
 		assertions.ShouldEqual(len(*radios.Data), radiosNum)
 	}
