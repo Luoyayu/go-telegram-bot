@@ -16,4 +16,4 @@ elif [ "$1" == "windows" ]; then
   export GOARCH=amd64
 fi
 
-go build -ldflags "-s -w" -o telegram_bot *.go
+go build -ldflags "-s -w" -o go_telegram_bot *.go
