@@ -1,5 +1,4 @@
-[![Build Status](https://travis-ci.com/Luoyayu/go-telegram-bot.svg?branch=master)](https://travis-ci.com/Luoyayu/go-telegram-bot)[![Coverage Status](https://coveralls.io/repos/github/Luoyayu/go-telegram-bot/badge.svg?branch=master)](https://coveralls.io/github/Luoyayu/go-telegram-bot?branch=master) 
-
+[![Coverage Status](https://coveralls.io/repos/github/Luoyayu/go-telegram-bot/badge.svg?branch=master)](https://coveralls.io/github/Luoyayu/go-telegram-bot?branch=master) 
 
 # env variable
 

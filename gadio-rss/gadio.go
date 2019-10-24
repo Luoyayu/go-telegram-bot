@@ -1,4 +1,4 @@
-package gadio_rss
+package gadioRss
 
 import (
 	"encoding/json"
