@@ -27,42 +27,39 @@ var (
 	)
 )
 
-func handleSmartHomeDevices(ops string, dev string) (replyMsg string) {
+func handleSmartHomeDevices(ops string, dev string) (text string, err error) {
 	apiUrl := os.Getenv("SMART_HOME_API_URL") + "/api/" + dev + "/" + ops
 	resp, err := http.PostForm(apiUrl, url.Values{
 		"apikey": {os.Getenv("SMART_HOME_APITOKEN")},
 	})
 
 	if err != nil {
-		Logger.Error(err)
-		replyMsg = err.Error()
-		return
+		return text, err
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		Logger.Error(err)
-		replyMsg = err.Error()
-		return
+		return text, err
 	}
 
 	switch string(body) {
 	case "\"0\"\n":
-		replyMsg = "已关闭"
+		text = "已关闭"
 	case "\"1\"\n":
-		replyMsg = "开着"
+		text = "开着"
 	default:
 		Logger.Infof("%q\n", string(body))
-		replyMsg = "未知状态"
+		text = "未知状态"
 	}
 
 	switch dev {
 	case "light":
-		replyMsg = "台灯: " + replyMsg
+		text = "台灯: " + text
 	case "ps":
-		replyMsg = "插线板: " + replyMsg
+		text = "插线板: " + text
 	default:
-		replyMsg = "设备: " + replyMsg
+		text = "设备: " + text
 	}
+
 	return
 }

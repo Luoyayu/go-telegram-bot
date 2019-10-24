@@ -2,9 +2,14 @@ myrun.sh
 
 *.tmp
 me*
+my*
 
 build
-go_telegram_bot_*
+
+go_telegram_bot
+go_telegram_bot_osx
+go_telegram_bot_linux
+go_telegram_bot_windows
 
 *.oga
 *.wav

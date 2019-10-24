@@ -4,34 +4,48 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
+	dbRedis "github.com/luoyayu/go_telegram_bot/redis-tgbot"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
 )
 
-func handleChatCommand(chatMsg *tgbotapi.Message, replyMsg *tgbotapi.MessageConfig) {
+func handleChatCommand(chatMsg *tgbotapi.Message, replyMsg *tgbotapi.MessageConfig) (err error) {
 	switch chatMsg.Command() {
 	case "start":
 		replyMsg.Text = "ヽ(ﾟ∀ﾟ)ﾒ(ﾟ∀ﾟ)ﾉ /help to start"
 	case "help":
 		replyMsg.Text = "you can ask me by these commands:\n" + helpCmds
-	case "status":
-		replyMsg.Text = "(￣.￣)), I'm fine."
+	case "redis":
+		if dbClient != nil {
+			replyMsg.Text = "(￣.￣)) redis is ok."
+		} else {
+			replyMsg.Text = "(￣^￣)), redis is down."
+		}
 	case "sayhi":
 		replyMsg.Text = "Hi :)"
 	case "home":
 		if os.Getenv("SMART_HOME_API_URL") != "" {
 			replyMsg.ReplyMarkup = HomeDevicesInlineKeyboard
 		} else {
-			replyMsg.Text = "Not support control Smart Home!"
+			err = fmt.Errorf("not support control Smart Home")
 		}
 	case "gradios":
-		replyMsg.Text = handleChatGRadios(chatMsg, replyMsg)
+		var text string
+		text, err = handleChatGRadios(chatMsg)
+		if err != nil {
+			return
+		} else {
+			replyMsg.Text = text
+			replyMsg.ReplyMarkup = GRadiosListInlineKeyboard
+		}
+
 	default:
 		replyMsg.Text = "!?(･_･;?"
 		replyMsg.ReplyToMessageID = chatMsg.MessageID
 	}
+	return
 }
 
 func handleVoiceMsg(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) error {
@@ -76,4 +90,23 @@ func convertOga2Wav48K(fileNameWOExt string) (error, string) {
 		return err, stderr.String()
 	}
 	return nil, ""
+}
+
+/*func SendAndLog(bot *tgbotapi.BotAPI, replyMsg *tgbotapi.Chattable) {
+	if replyMsg.Text == "" {
+		Logger.Error("reply message is void, do nothing")
+		return
+	}
+
+	_, err := bot.Send(*replyMsg)
+	if err != nil {
+		Logger.Info("send msg error: ", err)
+	} else {
+		Logger.Info("sending to ", replyMsg.ReplyToMessageID, replyMsg.Text)
+	}
+}*/
+
+func UserPermissionsCheck(user *dbRedis.User, expectPermission string) (withThePermission bool) {
+	_, withThePermission = user.PermissionsMap()[expectPermission]
+	return
 }

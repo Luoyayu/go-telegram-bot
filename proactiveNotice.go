@@ -6,11 +6,21 @@ import (
 	"strconv"
 )
 
-func handleProactiveNotice(bot *tgbotapi.BotAPI, ) {
-	chatID, err := strconv.ParseInt(os.Getenv("CHAT_ID"), 10, 64)
+func handleProactiveNotice(bot *tgbotapi.BotAPI, userid string, messageText string, inlineKeyboard *tgbotapi.InlineKeyboardMarkup) {
+	var userid64 int64
+	var err error
+	if userid == "" {
+		userid64, err = strconv.ParseInt(os.Getenv("SUPER_USER_ID"), 10, 64)
+	} else {
+		userid64, err = strconv.ParseInt(userid, 10, 64)
+	}
 	if err != nil {
 		Logger.Error("no chat id")
 	} else {
-		_, _ = bot.Send(tgbotapi.NewMessage(chatID, "Hello"))
+		msg := tgbotapi.NewMessage(userid64, messageText)
+		if inlineKeyboard != nil {
+			msg.ReplyMarkup = inlineKeyboard
+		}
+		_, _ = bot.Send(msg)
 	}
 }

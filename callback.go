@@ -9,7 +9,10 @@ import (
 	"time"
 )
 
-func handleEditMessageReplyMarkup(chatCallbackQuery *tgbotapi.CallbackQuery, newReplyMarkup *tgbotapi.InlineKeyboardMarkup) tgbotapi.EditMessageReplyMarkupConfig {
+func handleEditMessageReplyMarkup(
+	chatCallbackQuery *tgbotapi.CallbackQuery,
+	newReplyMarkup *tgbotapi.InlineKeyboardMarkup) tgbotapi.EditMessageReplyMarkupConfig {
+
 	editText := tgbotapi.NewEditMessageReplyMarkup(
 		chatCallbackQuery.Message.Chat.ID,
 		chatCallbackQuery.Message.MessageID,
@@ -37,52 +40,75 @@ func handleChatCallback(bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 
 	// callback with Smart Home Devices
 	if strings.HasSuffix(callbackData, "light") == true {
+		var lightError error
 		switch callbackData {
 		case "control light":
-			_, err = bot.Send(handleEditMessageReplyMarkup(callbackQuery, &HomeLightControlInlineKeyboard))
-			return
+			_, lightError = bot.Send(handleEditMessageReplyMarkup(callbackQuery, &HomeLightControlInlineKeyboard))
 		case "opening light":
-			replyMsg.Text = handleSmartHomeDevices("on", "light")
+			replyMsg.Text, lightError = handleSmartHomeDevices("on", "light")
 		case "closing light":
-			replyMsg.Text = handleSmartHomeDevices("off", "light")
+			replyMsg.Text, lightError = handleSmartHomeDevices("off", "light")
 		case "status of light":
-			replyMsg.Text = handleSmartHomeDevices("status", "light")
+			replyMsg.Text, lightError = handleSmartHomeDevices("status", "light")
+		}
+
+		if lightError != nil {
+			Logger.ErrorAndSend(&replyMsg, lightError)
+		} else if replyMsg.Text == "" {
+			Logger.ErrorAndSend(&replyMsg, "Unknown error!")
+		} else {
+			return
 		}
 		goto ReplyMsg
 	} else
 	// callback with `back to ...` inline keyboard
 	if strings.HasPrefix(callbackData, "back to") == true {
+		var backToError error
 		switch callbackData {
 		case "back to radios info":
-			_, err = bot.Send(handleEditMessageReplyMarkup(callbackQuery, &GRadiosListInlineKeyboard))
-			return
+			_, backToError = bot.Send(handleEditMessageReplyMarkup(callbackQuery, &GRadiosListInlineKeyboard))
 		case "back to home devices":
-			_, err = bot.Send(handleEditMessageReplyMarkup(callbackQuery, &HomeDevicesInlineKeyboard))
+			_, backToError = bot.Send(handleEditMessageReplyMarkup(callbackQuery, &HomeDevicesInlineKeyboard))
+		}
+		if backToError != nil {
+			Logger.ErrorAndSend(&replyMsg, backToError)
+			goto ReplyMsg
+		} else {
 			return
 		}
-
 	} else
 	// callback with `close ...`
 	if strings.HasPrefix(callbackData, "close") == true {
+		var closeError error
 		switch callbackData {
 		case "close GRadios inline keyboard":
-			_, err = bot.Send(handleEditMessageReplyMarkup(callbackQuery, &UpdateGRadiosList))
+			_, closeError = bot.Send(handleEditMessageReplyMarkup(callbackQuery, &UpdateGRadiosList))
+		}
+		if closeError != nil {
+			Logger.ErrorAndSend(&replyMsg, closeError)
+		} else {
 			return
 		}
+		goto ReplyMsg
 	} else
 	// callback with `update ...`
 	if strings.HasPrefix(callbackData, "update") == true {
+		var updateError error
 		switch callbackData {
 		case "update GRadios list":
-			if err := newGRadioListInlineKeyboard(5); err != nil {
-				Logger.Error(err)
-				replyMsg.Text = "update error"
+			if updateError = newGRadioListInlineKeyboard(5); updateError != nil {
+				Logger.ErrorAndSend(&replyMsg, err)
 				goto ReplyMsg
 			} else {
-				_, err = bot.Send(handleEditMessageReplyMarkup(callbackQuery, &GRadiosListInlineKeyboard))
-				return
+				_, updateError = bot.Send(handleEditMessageReplyMarkup(callbackQuery, &GRadiosListInlineKeyboard))
 			}
 		}
+		if updateError != nil {
+			Logger.ErrorAndSend(&replyMsg, updateError)
+		} else {
+			return
+		}
+		goto ReplyMsg
 	}
 
 	if strings.HasPrefix(callbackData, "radio") == true {
@@ -92,7 +118,7 @@ func handleChatCallback(bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 
 		Logger.Info("radioUrl: ", radioUrl)
 		if GRadios == nil {
-			replyMsg.Text = "Please retry this /gradios to get latest info"
+			Logger.ErrorAndSend(&replyMsg, "Please retry /gradios to get latest info")
 			goto ReplyMsg
 		}
 
@@ -105,7 +131,7 @@ func handleChatCallback(bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 		}
 
 		if radioSelected.ID == "" {
-			replyMsg.Text = "not found this radio info!"
+			Logger.ErrorAndSend(&replyMsg, "not found this radio [%d] info!", radioId)
 			goto ReplyMsg
 		}
 
@@ -134,10 +160,19 @@ func handleChatCallback(bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 		}
 		handleOneRowOneBtn(">>back", "back to radios info", &gRadioInfoKeyboard)
 		_, err = bot.Send(handleEditMessageReplyMarkup(callbackQuery, &gRadioInfoKeyboard))
-		return
+		if err != nil {
+			Logger.ErrorAndSend(&replyMsg, err)
+		} else {
+			return
+		}
+		goto ReplyMsg
 	}
 
 ReplyMsg:
+	if replyMsg.Text == "" {
+		Logger.Error("replyMsg is void, do nothing!")
+		return
+	}
 	_, err = bot.Send(replyMsg)
 	if err != nil {
 		Logger.Info("send msg error! ", err)

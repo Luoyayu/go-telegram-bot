@@ -1,28 +1,40 @@
-[![Build Status](https://travis-ci.com/Luoyayu/go-telegram-bot.svg?branch=master)](https://travis-ci.com/Luoyayu/go-telegram-bot)[![Coverage Status](https://coveralls.io/repos/github/Luoyayu/go-telegram-bot/badge.svg?branch=master)](https://coveralls.io/github/Luoyayu/go-telegram-bot?branch=master)
+[![Build Status](https://travis-ci.com/Luoyayu/go-telegram-bot.svg?branch=master)](https://travis-ci.com/Luoyayu/go-telegram-bot) [![Coverage Status](https://coveralls.io/repos/github/Luoyayu/go-telegram-bot/badge.svg?branch=master)](https://coveralls.io/github/Luoyayu/go-telegram-bot?branch=master)
  
+
 # env variable
 
-export TELEGRAM_APITOKEN=""   
-export GRANTEDIDS="userA_ID,userB_ID,..." # make sure it contains your account  
-exoirt CHAT_ID="" # for proactive notice    
-export BOT_DEBUG="false"   
+ export TELEGRAM_APITOKEN=""
+ export GRANTEDIDS=", " # make sure it contains your account  
+ export BOT_DEBUG="false"
+ export SUPER_USER_ID="" 
 
 > customed service    
 
 export SMART_HOME_API_URL=""   
 export SMART_HOME_APITOKEN=""   
 
-> Ali Yun ASR Service    
+> Ali Yun ASR Service       
 make sure you have **ffmpeg** in PATH to convert .oag(48k) to .wav(18k)   
 
 export ALI_ASR_APPKEY=""  
-export ALI_ACCESS_TOKEN="" # No need if `ALI_ACCESS_KEYID` and `ALI_ACCESS_KEYSECRET` provided    
 export ALI_ACCESS_KEYID=""   
 export ALI_ACCESS_KEYSECRET="" 
 
 export ASR_API_URL="http://nls-gateway.cn-shanghai.aliyuncs.com/stream/v1/asr"   
 export AUDIO_SAMPLING_RATE_ASR="16000" # 16000 or 8000    
 
+> redis   
+bot can work if redis is ready 
+
+export RedisAddress="localhost:6379"
+export RedisDB=0
+export RedisPassword=""
+ 
+ 
+# Redis
+
+
+AliToken is store in redis and set EXPIRE time by gettoken API
 
 
 # build  
@@ -34,6 +46,11 @@ please fill in the env variable in `run.sh`
 keep env blank if you don't need the service    
 
 `bash run.sh [osx/windows/linux]`
+
+# TODO
+
+[ ] [rsshub](https://docs.rsshub.app)
+
 
 # reference
 
@@ -48,3 +65,4 @@ keep env blank if you don't need the service
 # Licence
 
 MIT
+

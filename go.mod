@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20191022072013-3620947e56b4
+	github.com/go-redis/redis/v7 v7.0.0-beta.4
 	github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible
 	github.com/sirupsen/logrus v1.4.2
 	github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d

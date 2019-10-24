@@ -31,7 +31,7 @@ func newGRadioListInlineKeyboard(radiosNum int) error {
 		return err
 	} else {
 		if GRadios == nil {
-			return fmt.Errorf("net is down!")
+			return fmt.Errorf("net is down")
 		}
 
 		for _, radio := range *GRadios.Data {
@@ -44,19 +44,21 @@ func newGRadioListInlineKeyboard(radiosNum int) error {
 	return nil
 }
 
-func handleChatGRadios(message *tgbotapi.Message, replyMsg *tgbotapi.MessageConfig) string {
+func handleChatGRadios(message *tgbotapi.Message) (text string, err error) {
 	radiosNum := 5
 	Logger.Info("CommandArguments: ", message.CommandArguments())
-	if commandArgument, err := strconv.Atoi(strings.TrimSpace(message.CommandArguments())); err == nil {
+	commandArgument, err := strconv.Atoi(strings.TrimSpace(message.CommandArguments()))
+	if err == nil {
 		radiosNum = commandArgument
 	} else if strings.TrimSpace(message.CommandArguments()) != "" {
-		Logger.Warn(err)
-		return "wrong Command Arguments:" + message.CommandArguments()
-	}
-	if err := newGRadioListInlineKeyboard(radiosNum); err != nil {
 		Logger.Error(err)
-		return err.Error()
 	}
-	replyMsg.ReplyMarkup = GRadiosListInlineKeyboard
-	return "机核近期电台\n"
+
+	if err = newGRadioListInlineKeyboard(radiosNum); err != nil {
+		Logger.Error(err)
+		return
+	}
+
+	text = "机核近期电台\n"
+	return
 }

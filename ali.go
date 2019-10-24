@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	AliSDK "github.com/aliyun/alibaba-cloud-sdk-go/sdk"
 	AliHttp "github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
 	"io/ioutil"
@@ -10,17 +11,22 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 )
 
 type GetTokenFromSDKType struct {
 	TokenType `json:"Token"`
+	//RequestId    string `json:"RequestId"`
+	//NlsRequestId string `json:"NlsRequestId"`
 }
 
 type TokenType struct {
-	Id string `json:"Id"`
+	Id         string `json:"Id"` // token
+	ExpireTime int64  `json:"ExpireTime"`
+	UserId     string `json:"UserId"`
 }
 
-func GetTokenFromSDK() (token string, errString string) {
+func GetTokenFromSDK() (result *GetTokenFromSDKType, contentString string) {
 	client, err := AliSDK.NewClientWithAccessKey(
 		"cn-shanghai",
 		os.Getenv("ALI_ACCESS_KEYID"),
@@ -35,24 +41,35 @@ func GetTokenFromSDK() (token string, errString string) {
 	request.Version = "2019-02-28"
 	response, err := client.ProcessCommonRequest(request)
 	if err != nil {
-		Logger.Error(err)
-		return "", err.Error()
+		Logger.ErrorService("ali", err)
+		return nil, err.Error()
 	}
-	errString = response.GetHttpContentString()
+	contentString = response.GetHttpContentString()
 
 	if response.GetHttpStatus() == 200 {
 		log.Println(response.GetHttpContentString())
-		var result GetTokenFromSDKType
 		err = json.Unmarshal(response.GetHttpContentBytes(), &result)
 		if err != nil {
-			Logger.Error(err)
+			Logger.ErrorService("ali", err)
 		} else {
-			Logger.Infof("%+v\n", result)
-			token = result.TokenType.Id
+			Logger.InfofService("ali", "%+v\n", *result)
 		}
-		return token, errString
+		return result, contentString
 	}
-	return "", errString
+	return nil, contentString
+}
+
+func updateTokenAndStore() error {
+	tokenFromSDK, contentString := GetTokenFromSDK()
+	if tokenFromSDK.Id == "" {
+		return fmt.Errorf("try get token from sdk error: %s", contentString)
+	} else {
+		AliToken = tokenFromSDK.Id
+		// store new token to redis and set it's expire time
+		dbClient.Set("ALI_ACCESS_TOKEN", tokenFromSDK.Id,
+			time.Duration(tokenFromSDK.ExpireTime*1e9))
+	}
+	return nil
 }
 
 func handleVoiceMsg2Text(
@@ -104,20 +121,18 @@ func handleVoiceMsg2Text(
 		defer response.Body.Close()
 	}
 
-	//body, _ := ioutil.ReadAll(response.Body)
 	statusCode := response.StatusCode
 
 	decoder := json.NewDecoder(response.Body)
 	err = decoder.Decode(&resultMap)
 
-	//err = json.Unmarshal(body, &resultMap)
 	if err != nil {
 		Logger.Error(err)
 	}
 
 	if statusCode == 200 {
 		var result = resultMap.Result
-		Logger.Info("recognition succeed ：" + result)
+		Logger.Infof("recognition succeed, result is %q", result)
 	} else {
 		Logger.Error("recognition failed，HTTP StatusCode: " + strconv.Itoa(statusCode))
 	}
