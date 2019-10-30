@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-type GetTokenFromSDKType struct {
+type getTokenFromSDKType struct {
 	TokenType `json:"Token"`
 	//RequestId    string `json:"RequestId"`
 	//NlsRequestId string `json:"NlsRequestId"`
@@ -26,7 +26,7 @@ type TokenType struct {
 	UserId     string `json:"UserId"`
 }
 
-func GetTokenFromSDK() (result *GetTokenFromSDKType, contentString string) {
+func getTokenFromSDK() (result *getTokenFromSDKType, contentString string) {
 	client, err := AliSDK.NewClientWithAccessKey(
 		"cn-shanghai",
 		os.Getenv("ALI_ACCESS_KEYID"),
@@ -60,7 +60,7 @@ func GetTokenFromSDK() (result *GetTokenFromSDKType, contentString string) {
 }
 
 func updateTokenAndStore() error {
-	tokenFromSDK, contentString := GetTokenFromSDK()
+	tokenFromSDK, contentString := getTokenFromSDK()
 	if tokenFromSDK.Id == "" {
 		return fmt.Errorf("try get token from sdk error: %s", contentString)
 	} else {

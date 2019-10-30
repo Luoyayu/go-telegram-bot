@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-func handleProactiveNotice(bot *tgbotapi.BotAPI, userid string, messageText string, inlineKeyboard *tgbotapi.InlineKeyboardMarkup) {
+func proactiveNotice(bot *tgbotapi.BotAPI, userid string, messageText string, inlineKeyboard *tgbotapi.InlineKeyboardMarkup) {
 	var userid64 int64
 	var err error
 	if userid == "" {

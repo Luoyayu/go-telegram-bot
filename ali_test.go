@@ -5,5 +5,5 @@ import (
 )
 
 func TestGetTokenFromSDK(t *testing.T) {
-	Logger.Debug(GetTokenFromSDK())
+	Logger.Debug(getTokenFromSDK())
 }

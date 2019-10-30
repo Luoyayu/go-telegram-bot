@@ -1,4 +1,4 @@
-package main
+package logger_tgbot
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	Logger = newLogger(logrus.DebugLevel)
+	logger = NewLogger()
 )
 
 type ILogger interface {
@@ -42,9 +42,12 @@ type ILogger interface {
 type defaultLogger struct {
 }
 
-func newLogger(debugLevel logrus.Level) ILogger {
+func NewLogger() ILogger {
 	logrus.SetOutput(os.Stdout)
-	logrus.SetLevel(debugLevel)
+	logrus.SetLevel(logrus.DebugLevel)
+	logrus.SetFormatter(&logrus.TextFormatter{
+		FullTimestamp: true,
+	})
 	return &defaultLogger{}
 }
 
@@ -74,13 +77,13 @@ func (*defaultLogger) Fatalf(format string, v ...interface{}) {
 func (*defaultLogger) FatalService(service string, v ...interface{}) {
 	logrus.New().WithFields(logrus.Fields{
 		"service": service,
-	}).Fatal(v)
+	}).Fatal(v...)
 }
 
 func (*defaultLogger) FatalfService(service string, format string, v ...interface{}) {
 	logrus.New().WithFields(logrus.Fields{
 		"service": service,
-	}).Fatalf(format, v)
+	}).Fatalf(format, v...)
 }
 
 func (*defaultLogger) Debug(v ...interface{}) {
@@ -94,13 +97,13 @@ func (*defaultLogger) Info(v ...interface{}) {
 func (*defaultLogger) InfoService(service string, v ...interface{}) {
 	logrus.New().WithFields(logrus.Fields{
 		"service": service,
-	}).Info(v)
+	}).Info(v...)
 }
 
 func (*defaultLogger) InfofService(service string, format string, v ...interface{}) {
 	logrus.New().WithFields(logrus.Fields{
 		"service": service,
-	}).Infof(format, v)
+	}).Infof(format, v...)
 }
 
 func (*defaultLogger) Warn(v ...interface{}) {
@@ -113,23 +116,23 @@ func (*defaultLogger) Error(v ...interface{}) {
 func (*defaultLogger) ErrorService(service string, v ...interface{}) {
 	logrus.New().WithFields(logrus.Fields{
 		"service": service,
-	}).Error(v)
+	}).Error(v...)
 }
 
 func (*defaultLogger) ErrorfService(service string, format string, v ...interface{}) {
 	logrus.New().WithFields(logrus.Fields{
 		"service": service,
-	}).Errorf(format, v)
+	}).Errorf(format, v...)
 }
 
 func (*defaultLogger) ErrorAndSend(replyMsg *tgbotapi.MessageConfig, v ...interface{}) {
-	Logger.Error(v)
+	logger.Error(v...)
 	errString := fmt.Sprint(v...)
 	replyMsg.Text = errString
 }
 
 func (*defaultLogger) ErrorfAndSend(replyMsg *tgbotapi.MessageConfig, format string, v ...interface{}) {
-	Logger.Errorf(format, v)
+	logger.Errorf(format, v...)
 	errString := fmt.Sprintf(format, v...)
 	replyMsg.Text = errString
 

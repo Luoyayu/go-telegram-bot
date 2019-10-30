@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/luoyayu/go_telegram_bot/gadio-rss"
-
 	"strconv"
 	"strings"
 )
@@ -14,7 +13,8 @@ var (
 
 	UpdateGRadiosList = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("update", "update GRadios list"),
+			tgbotapi.NewInlineKeyboardButtonData("update", BtnIdUpdateGRadiosList),
+			tgbotapi.NewInlineKeyboardButtonData(">>close", BtnIdClose),
 		),
 	)
 
@@ -35,18 +35,18 @@ func newGRadioListInlineKeyboard(radiosNum int) error {
 		}
 
 		for _, radio := range *GRadios.Data {
-			handleOneRowOneBtn(radio.Attributes.Title, fmt.Sprint("radio", radio.ID), &GRadiosListInlineKeyboard)
+			oneRowOneBtn(radio.Attributes.Title, fmt.Sprint("radio", radio.ID), &GRadiosListInlineKeyboard)
 			//radiosTitle += strings.Split(radio.Attributes.PublishedAt, "T")[0] + "\n\t"
 			//radiosTitle += radio.Attributes.Title + "\n"
 		}
-		handleOneRowOneBtn("close", "close GRadios inline keyboard", &GRadiosListInlineKeyboard)
+		oneRowOneBtn(">>close", BtnIdCloseGRadiosInlineKeyboard, &GRadiosListInlineKeyboard)
 	}
 	return nil
 }
 
 func handleChatGRadios(message *tgbotapi.Message) (text string, err error) {
 	radiosNum := 5
-	Logger.Info("CommandArguments: ", message.CommandArguments())
+	Logger.Infof("command with arguments: %q\n", message.CommandArguments())
 	commandArgument, err := strconv.Atoi(strings.TrimSpace(message.CommandArguments()))
 	if err == nil {
 		radiosNum = commandArgument

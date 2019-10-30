@@ -58,11 +58,12 @@ func GetGRadios(radiosNum int) (*Radios, error) {
 	params.Add("page[limit]", strconv.Itoa(radiosNum))
 	params.Add("page[offset]", "0")
 	params.Add("sort", "-published-at")
-	//params.Add("include", "category,djs")
+	params.Add("include", "category,djs")
 	params.Add("fields[radios]", "title,desc,published-at,duration")
-	//params.Add("fields[radios]", "title,desc,cover,published-at,duration,category,djs")
+	params.Add("fields[radios]", "title,desc,cover,published-at,duration,category,djs")
+	params.Add("from-app", "1")
 
-	radioUrl, _ := url.Parse("http://www.gcores.com/gapi/v1/radios?" + params.Encode())
+	radioUrl, _ := url.Parse(GAPI + "radios?" + params.Encode())
 	log.Println(radioUrl)
 
 	resp, err := http.Get(radioUrl.String())

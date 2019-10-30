@@ -1,10 +1,15 @@
 myrun.sh
 
+tmp*
+tmp.*
 *.tmp
+
 me*
 my*
 
 build
+gotogo
+resource
 
 go_telegram_bot
 go_telegram_bot_osx

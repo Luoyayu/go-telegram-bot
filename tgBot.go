@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 func handleChatCommand(chatMsg *tgbotapi.Message, replyMsg *tgbotapi.MessageConfig) (err error) {
@@ -40,6 +41,9 @@ func handleChatCommand(chatMsg *tgbotapi.Message, replyMsg *tgbotapi.MessageConf
 			replyMsg.Text = text
 			replyMsg.ReplyMarkup = GRadiosListInlineKeyboard
 		}
+	case "rss":
+		replyMsg.Text = "rss services supported currently:"
+		replyMsg.ReplyMarkup = AllRssSupportSubscribeInlineKeyboard
 
 	default:
 		replyMsg.Text = "!?(･_･;?"
@@ -92,6 +96,26 @@ func convertOga2Wav48K(fileNameWOExt string) (error, string) {
 	return nil, ""
 }
 
+func handleUserUnFinishedTask(taskName, task string, message *tgbotapi.Message) (err error) {
+	if strings.HasPrefix(task, CallbackPrefixRssSub) {
+		param := strings.Split(task, "_")
+		Logger.Info("user unfinished task: ", param)
+		//taskMsgId := param[len(param)-1]
+
+		// TODO
+		err = nil
+
+	} else {
+
+	}
+	if err != nil {
+		dbClient.LPush(taskName, task)
+	} else {
+		return nil
+	}
+	return err
+}
+
 /*func SendAndLog(bot *tgbotapi.BotAPI, replyMsg *tgbotapi.Chattable) {
 	if replyMsg.Text == "" {
 		Logger.Error("reply message is void, do nothing")
@@ -106,7 +130,7 @@ func convertOga2Wav48K(fileNameWOExt string) (error, string) {
 	}
 }*/
 
-func UserPermissionsCheck(user *dbRedis.User, expectPermission string) (withThePermission bool) {
+func checkUserPermissions(user *dbRedis.User, expectPermission string) (withThePermission bool) {
 	_, withThePermission = user.PermissionsMap()[expectPermission]
 	return
 }

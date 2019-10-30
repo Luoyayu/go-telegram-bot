@@ -1,15 +1,63 @@
 package main
 
 import (
+	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/luoyayu/go_telegram_bot/gadio-rss"
+	dbRedis "github.com/luoyayu/go_telegram_bot/redis-tgbot"
 
 	"strconv"
 	"strings"
 	"time"
 )
 
-func handleEditMessageReplyMarkup(
+// Callback Suffix with `light`
+const (
+	CallbackSuffixLight = "light"
+	BtnIdControlLight   = "control light"
+	BtnIDOpeningLight   = "opening light"
+	BtnIdClosingLight   = "closing light"
+	BtnIdStatusOfLight  = "status of light"
+)
+
+// Callback Prefix with `back to`
+const (
+	CallbackPrefixBackTo                  = "back to"
+	BtnIdBackToRadiosInfo                 = "back to radios info"
+	BtnIdBackToHomeDevices                = "back to home devices"
+	BtnIdBackToAllRssSupportingSubscribes = "back to all rss supporting subscribes"
+)
+
+// Callback Prefix with `close`
+const (
+	CallbackPrefixClose             = "close"
+	BtnIdClose                      = "close"
+	BtnIdCloseGRadiosInlineKeyboard = "close GRadios inline keyboard"
+)
+
+// Callback Prefix with `update`
+const (
+	CallbackPrefixUpdate   = "update"
+	BtnIdUpdateGRadiosList = "update GRadios list"
+)
+
+const (
+	CallbackSuffixRegister = "Register"
+	BtnIdRegister          = "Register"
+	BtnIdNotRegister       = "NotRegister"
+)
+
+// Callback Prefix with `radio`
+const (
+	CallbackPrefixRadio = "radio"
+)
+
+const (
+	CallbackPrefixRssSub = "rssSub_"
+)
+
+// change replay markup for specified chat id
+func editMessageReplyMarkup(
 	chatCallbackQuery *tgbotapi.CallbackQuery,
 	newReplyMarkup *tgbotapi.InlineKeyboardMarkup) tgbotapi.EditMessageReplyMarkupConfig {
 
@@ -21,34 +69,40 @@ func handleEditMessageReplyMarkup(
 	return editText
 }
 
-func handleChatCallback(bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
+func handleChatCallback(bot *tgbotapi.BotAPI, user *dbRedis.User, update *tgbotapi.Update) {
 	callbackQuery := update.CallbackQuery
-	callbackData := callbackQuery.Data
+	callbackID := callbackQuery.Data
+	Logger.Info("callbackID: ", callbackID)
 
-	_, err := bot.AnswerCallbackQuery(tgbotapi.NewCallback(callbackQuery.ID, callbackData))
+	_, err := bot.AnswerCallbackQuery(tgbotapi.NewCallback(callbackQuery.ID, callbackID))
 
 	if err != nil {
 		Logger.Errorf("get Answer from Callback Query Error: %+v\n", err)
 		return
 	}
 
-	if strings.HasPrefix(callbackData, "_") == true { // no need to reply if callback data with "_"
+	if strings.HasPrefix(callbackID, "_") == true { // no need to reply if callback data with "_"
 		return
 	}
 
-	replyMsg := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, callbackData)
+	replyMsg := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, callbackID)
+
+	// user not Authorized access
+	if user.PermissionsStr() == "" {
+		goto HandleRegister
+	}
 
 	// callback with Smart Home Devices
-	if strings.HasSuffix(callbackData, "light") == true {
+	if strings.HasSuffix(callbackID, CallbackSuffixLight) {
 		var lightError error
-		switch callbackData {
-		case "control light":
-			_, lightError = bot.Send(handleEditMessageReplyMarkup(callbackQuery, &HomeLightControlInlineKeyboard))
-		case "opening light":
+		switch callbackID {
+		case BtnIdControlLight:
+			_, lightError = bot.Send(editMessageReplyMarkup(callbackQuery, &HomeLightControlInlineKeyboard))
+		case BtnIDOpeningLight:
 			replyMsg.Text, lightError = handleSmartHomeDevices("on", "light")
-		case "closing light":
+		case BtnIdClosingLight:
 			replyMsg.Text, lightError = handleSmartHomeDevices("off", "light")
-		case "status of light":
+		case BtnIdStatusOfLight:
 			replyMsg.Text, lightError = handleSmartHomeDevices("status", "light")
 		}
 
@@ -62,13 +116,15 @@ func handleChatCallback(bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 		goto ReplyMsg
 	} else
 	// callback with `back to ...` inline keyboard
-	if strings.HasPrefix(callbackData, "back to") == true {
+	if strings.HasPrefix(callbackID, CallbackPrefixBackTo) {
 		var backToError error
-		switch callbackData {
-		case "back to radios info":
-			_, backToError = bot.Send(handleEditMessageReplyMarkup(callbackQuery, &GRadiosListInlineKeyboard))
-		case "back to home devices":
-			_, backToError = bot.Send(handleEditMessageReplyMarkup(callbackQuery, &HomeDevicesInlineKeyboard))
+		switch callbackID {
+		case BtnIdBackToRadiosInfo:
+			_, backToError = bot.Send(editMessageReplyMarkup(callbackQuery, &GRadiosListInlineKeyboard))
+		case BtnIdBackToHomeDevices:
+			_, backToError = bot.Send(editMessageReplyMarkup(callbackQuery, &HomeDevicesInlineKeyboard))
+		case BtnIdBackToAllRssSupportingSubscribes:
+			_, backToError = bot.Send(editMessageReplyMarkup(callbackQuery, &AllRssSupportSubscribeInlineKeyboard))
 		}
 		if backToError != nil {
 			Logger.ErrorAndSend(&replyMsg, backToError)
@@ -78,11 +134,13 @@ func handleChatCallback(bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 		}
 	} else
 	// callback with `close ...`
-	if strings.HasPrefix(callbackData, "close") == true {
+	if strings.HasPrefix(callbackID, CallbackPrefixClose) {
 		var closeError error
-		switch callbackData {
-		case "close GRadios inline keyboard":
-			_, closeError = bot.Send(handleEditMessageReplyMarkup(callbackQuery, &UpdateGRadiosList))
+		switch callbackID {
+		case BtnIdCloseGRadiosInlineKeyboard:
+			_, closeError = bot.Send(editMessageReplyMarkup(callbackQuery, &UpdateGRadiosList))
+		default:
+			_, closeError = bot.Send(editMessageReplyMarkup(callbackQuery, nil))
 		}
 		if closeError != nil {
 			Logger.ErrorAndSend(&replyMsg, closeError)
@@ -92,15 +150,15 @@ func handleChatCallback(bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 		goto ReplyMsg
 	} else
 	// callback with `update ...`
-	if strings.HasPrefix(callbackData, "update") == true {
+	if strings.HasPrefix(callbackID, CallbackPrefixUpdate) {
 		var updateError error
-		switch callbackData {
-		case "update GRadios list":
+		switch callbackID {
+		case BtnIdUpdateGRadiosList:
 			if updateError = newGRadioListInlineKeyboard(5); updateError != nil {
 				Logger.ErrorAndSend(&replyMsg, err)
 				goto ReplyMsg
 			} else {
-				_, updateError = bot.Send(handleEditMessageReplyMarkup(callbackQuery, &GRadiosListInlineKeyboard))
+				_, updateError = bot.Send(editMessageReplyMarkup(callbackQuery, &GRadiosListInlineKeyboard))
 			}
 		}
 		if updateError != nil {
@@ -109,10 +167,10 @@ func handleChatCallback(bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 			return
 		}
 		goto ReplyMsg
-	}
-
-	if strings.HasPrefix(callbackData, "radio") == true {
-		radioId := callbackData[5:]
+	} else
+	// callback with `radio ...`
+	if strings.HasPrefix(callbackID, CallbackPrefixRadio) {
+		radioId := callbackID[5:]
 		radioUrl := "https://www.gcores.com/radios/" + radioId
 		var radioSelected gadioRss.RadioDataEntity
 
@@ -147,25 +205,90 @@ func handleChatCallback(bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 		}
 
 		btnEntities = map[string]string{
-			"_" + callbackData + "_date":     "发布日期: " + strings.Split(radioSelected.Attributes.PublishedAt, "T")[0],
-			"_" + callbackData + "_title":    "标题: " + radioSelected.Attributes.Title,
-			"_" + callbackData + "_desc":     "描述: " + radioSelected.Attributes.Desc,
-			"_" + callbackData + "_url":      radioUrl,
-			"_" + callbackData + "_duration": "时长: " + radioDuration,
+			"_" + callbackID + "_date":     "发布日期: " + strings.Split(radioSelected.Attributes.PublishedAt, "T")[0],
+			"_" + callbackID + "_title":    "标题: " + radioSelected.Attributes.Title,
+			"_" + callbackID + "_desc":     "描述: " + radioSelected.Attributes.Desc,
+			"_" + callbackID + "_url":      radioUrl,
+			"_" + callbackID + "_duration": "时长: " + radioDuration,
 		}
 		gRadioInfoKeyboard := tgbotapi.NewInlineKeyboardMarkup()
 
 		for callbackText, btnText := range btnEntities {
-			handleOneRowOneBtn(btnText, callbackText, &gRadioInfoKeyboard)
+			oneRowOneBtn(btnText, callbackText, &gRadioInfoKeyboard)
 		}
-		handleOneRowOneBtn(">>back", "back to radios info", &gRadioInfoKeyboard)
-		_, err = bot.Send(handleEditMessageReplyMarkup(callbackQuery, &gRadioInfoKeyboard))
+		oneRowOneBtn(">>back", BtnIdBackToRadiosInfo, &gRadioInfoKeyboard)
+		_, err = bot.Send(editMessageReplyMarkup(callbackQuery, &gRadioInfoKeyboard))
 		if err != nil {
 			Logger.ErrorAndSend(&replyMsg, err)
 		} else {
 			return
 		}
 		goto ReplyMsg
+	} else
+	//
+	if strings.HasPrefix(callbackID, CallbackPrefixRssSub) {
+		// rssSub_bilibili
+		// rssSub_bilibili_user_2333
+		// rssSub_bilibili_live_1
+		requestRssList := strings.Split(callbackID, "_")
+
+		requestRss := requestRssList[1:]
+		requestRssName := requestRss[0]
+		show := false
+		if len(requestRss) == 1 {
+			show = true
+		}
+
+		if show {
+			if v, ok := RssHubAllSubMap[requestRssName]; ok == false {
+				Logger.ErrorfService("rssHub", "not found %s in Rss Hub All Sub Map", requestRssName)
+			} else {
+				rssAvailableSubsInlineKeyboard := tgbotapi.NewInlineKeyboardMarkup()
+				for subSubName, subSubItem := range v {
+					Logger.Infof("%+v %+v\n", subSubName, subSubItem)
+					Logger.Infof("%+v\n", subSubItem)
+					oneRowOneBtn(subSubItem["path"]+subSubItem["help"], CallbackPrefixRssSub+requestRssName+"_"+subSubName, &rssAvailableSubsInlineKeyboard)
+				}
+				oneRowOneBtn("<<back", "back to all rss supporting subscribes", &rssAvailableSubsInlineKeyboard)
+				_, err := bot.Send(editMessageReplyMarkup(callbackQuery, &rssAvailableSubsInlineKeyboard))
+				if err != nil {
+					Logger.Error(err)
+				}
+				return
+			}
+		} else {
+			params := requestRss
+			Logger.Infof("%+v\n", params)
+			// store message state by Chat ID
+			Logger.Info(update.UpdateID)
+
+			// push params to list user:user.Id():task_msgID
+			dbClient.LPush("user:"+user.Id()+":tasks", callbackID+"_"+fmt.Sprint(callbackQuery.Message.MessageID))
+			replyMsg.Text = "please input by the format: `:` mean the param is necessary" + RssHubAllSubMap[requestRssName][params[0]]["help"]
+
+		}
+
+	}
+
+HandleRegister:
+	if strings.HasSuffix(callbackID, CallbackSuffixRegister) {
+		var registerErr error
+
+		switch callbackID {
+		// TODO
+		case BtnIdRegister:
+			// TODO
+		case BtnIdNotRegister:
+			_, registerErr = bot.Send(editMessageReplyMarkup(callbackQuery, nil))
+			dbClient.SRem(dbRedis.RedisKeys.UserNotAuthorizedAccess, user.Id())
+		}
+
+		if registerErr != nil {
+			// TODO
+		} else {
+			return
+		}
+
 	}
 
 ReplyMsg:
@@ -177,6 +300,6 @@ ReplyMsg:
 	if err != nil {
 		Logger.Info("send msg error! ", err)
 	} else {
-		Logger.Info("sending to ", replyMsg.ReplyToMessageID, replyMsg.Text)
+		Logger.Info("sending to ", replyMsg.ChatID, replyMsg.Text)
 	}
 }

@@ -24,16 +24,19 @@ func FlushDB(rc *redis.Client) {
 	rc.FlushDB()
 }
 
-type HashKeysStruct struct {
-	UserIdName        string
-	UserNameId        string
-	UserIdPermissions string
-	AllPermissions    string
+type RedisKeysStruct struct {
+	UserIdName              string // hash
+	UserNameId              string // Not implement
+	UserIdPermissions       string // hash
+	UserNotAuthorizedAccess string // set
+	UserIDTasks             string // list
+	AllPermissions          string // string
 }
 
-var HashKeys = HashKeysStruct{
-	UserIdName:        "user:id:name",
-	UserNameId:        "user:name:id",
-	UserIdPermissions: "user:id:permissions",
-	AllPermissions:    "allPermissions",
+var RedisKeys = RedisKeysStruct{
+	UserIdName:              "user:id:name",
+	UserNameId:              "user:name:id",
+	UserIdPermissions:       "user:id:permissions",
+	UserNotAuthorizedAccess: "user:notauthorizedaccess",
+	AllPermissions:          "allPermissions",
 }

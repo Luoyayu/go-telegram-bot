@@ -73,13 +73,13 @@ func NewUser(name, id string, permissionsStr string, permissionsMap map[string]b
 
 func (r *User) Add(rc *redis.Client) error {
 	if r.id != "" {
-		rc.HSet(HashKeys.UserIdName, r.id, r.name)
+		rc.HSet(RedisKeys.UserIdName, r.id, r.name)
 	} else {
 		return fmt.Errorf("user id is void")
 	}
 
 	if r.permissionsStr != "" {
-		rc.HSet(HashKeys.UserIdPermissions, r.id, r.permissionsStr)
+		rc.HSet(RedisKeys.UserIdPermissions, r.id, r.permissionsStr)
 	} else {
 		return fmt.Errorf("user permissionsStr is void")
 	}
@@ -87,26 +87,28 @@ func (r *User) Add(rc *redis.Client) error {
 }
 
 func (r *User) Del(rc *redis.Client) int64 {
-	return rc.HDel(HashKeys.UserIdName, r.id).Val()
+	return rc.HDel(RedisKeys.UserIdName, r.id).Val()
 }
+
+// FIXME User go 1.13 error
 
 func (r *User) Get(rc *redis.Client) error {
 	if rc == nil {
-		return fmt.Errorf("redis connect down")
+		return fmt.Errorf("redis error")
 	}
 
 	if r.id == "" {
-		return fmt.Errorf("user id is void")
+		return fmt.Errorf("id is void")
 	} else {
 		var err error
-		r.name, err = rc.HGet(HashKeys.UserIdName, r.id).Result()
+		r.name, err = rc.HGet(RedisKeys.UserIdName, r.id).Result()
 		if err != nil {
 			return err
 		}
 		if r.name == "" {
-			return fmt.Errorf("user id is not exists")
+			return fmt.Errorf("user not exists")
 		} else {
-			r.permissionsStr = rc.HGet(HashKeys.UserIdPermissions, r.id).Val()
+			r.permissionsStr = rc.HGet(RedisKeys.UserIdPermissions, r.id).Val()
 			if r.permissionsStr != "" {
 				permissionList := strings.Split(r.permissionsStr, ",")
 				log.Println(permissionList)
@@ -116,7 +118,7 @@ func (r *User) Get(rc *redis.Client) error {
 				}
 				r.permissionsMap = tmpMap
 			} else {
-				return fmt.Errorf("user permissions Str is void")
+				return fmt.Errorf("user permissions string is void")
 			}
 		}
 	}
@@ -125,7 +127,7 @@ func (r *User) Get(rc *redis.Client) error {
 
 /*func GetAllPermissions(rc *redis.Client) (map[string]bool, error) {
 	permissionsMap := map[string]bool{}
-	allPermissions, err := rc.HKeys(HashKeys.AllPermissions).Result()
+	allPermissions, err := rc.HKeys(RedisKeys.AllPermissions).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -136,10 +138,11 @@ func (r *User) Get(rc *redis.Client) error {
 	return permissionsMap, nil
 }*/
 
-func SetAllPermissions(rc *redis.Client, permissions string) error {
-	return rc.Set(HashKeys.AllPermissions, permissions, 0).Err()
+func SetAllPermissions(rc *redis.Client, permissionsStr string) error {
+	return rc.Set(RedisKeys.AllPermissions, permissionsStr, 0).Err()
 }
 
 func CheckUserExist(rc *redis.Client, userId string) bool {
-	return rc.HExists(HashKeys.UserIdName, userId).Val()
+	return rc.HExists(RedisKeys.UserIdName, userId).Val()
 }
+

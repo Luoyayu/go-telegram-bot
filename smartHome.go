@@ -11,18 +11,18 @@ import (
 var (
 	HomeDevicesInlineKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("light", "control light"),
+			tgbotapi.NewInlineKeyboardButtonData("light", BtnIdControlLight),
 		),
 	)
 
 	HomeLightControlInlineKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("open", "opening light"),
-			tgbotapi.NewInlineKeyboardButtonData("close", "closing light"),
-			tgbotapi.NewInlineKeyboardButtonData("status", "status of light"),
+			tgbotapi.NewInlineKeyboardButtonData("open", BtnIDOpeningLight),
+			tgbotapi.NewInlineKeyboardButtonData("close", BtnIdClosingLight),
+			tgbotapi.NewInlineKeyboardButtonData("status", BtnIdStatusOfLight),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("<<back", "back to home devices"),
+			tgbotapi.NewInlineKeyboardButtonData("<<back", BtnIdBackToHomeDevices),
 		),
 	)
 )
