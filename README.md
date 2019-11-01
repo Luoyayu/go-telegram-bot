@@ -3,12 +3,11 @@
 
 # env variable
 
- export TELEGRAM_APITOKEN=""
- export GRANTEDIDS=", " # make sure it contains your account  
- export BOT_DEBUG="false"
- export SUPER_USER_ID="" 
+ export TELEGRAM_APITOKEN=""   
+ export BOT_DEBUG="false"   
+ export SUPER_USER_ID=""    
 
-> customed service    
+> costumed service    
 
 export SMART_HOME_API_URL=""   
 export SMART_HOME_APITOKEN=""   
@@ -24,17 +23,15 @@ export ASR_API_URL="http://nls-gateway.cn-shanghai.aliyuncs.com/stream/v1/asr"
 export AUDIO_SAMPLING_RATE_ASR="16000" # 16000 or 8000    
 
 > redis   
-bot can work if redis is ready 
 
 export RedisAddress="localhost:6379"
 export RedisDB=0
 export RedisPassword=""
  
- 
 # Redis
 
 
-AliToken is store in redis and set EXPIRE time by gettoken API
+AliToken is store in redis and set EXPIRE time by Gettoken API
 
 
 # build  
@@ -49,7 +46,7 @@ keep env blank if you don't need the service
 
 # TODO
 
-[ ] [rsshub](https://docs.rsshub.app)
+- [ ] [rsshub](https://docs.rsshub.app)
 
 
 # reference

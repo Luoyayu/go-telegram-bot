@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 export TELEGRAM_APITOKEN=""
-export GRANTEDIDS=","
 export BOT_DEBUG="false"
 export SUPER_USER_ID=""
 

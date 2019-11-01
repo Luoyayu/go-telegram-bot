@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
-	"github.com/luoyayu/go_telegram_bot/gadio-rss"
-	dbRedis "github.com/luoyayu/go_telegram_bot/redis-tgbot"
+	"github.com/luoyayu/go_telegram_bot/gadio-tgbot-plugin"
+	dbRedis "github.com/luoyayu/go_telegram_bot/redis-tgbot-plugin"
 
 	"strconv"
 	"strings"

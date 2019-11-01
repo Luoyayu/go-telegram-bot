@@ -4,15 +4,17 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
-	dbRedis "github.com/luoyayu/go_telegram_bot/redis-tgbot"
+	dbRedis "github.com/luoyayu/go_telegram_bot/redis-tgbot-plugin"
+	v2ray "github.com/luoyayu/go_telegram_bot/v2ray-tgbot-plugin"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
-func handleChatCommand(chatMsg *tgbotapi.Message, replyMsg *tgbotapi.MessageConfig) (err error) {
+func handleChatCommand(bot *tgbotapi.BotAPI, chatMsg *tgbotapi.Message, replyMsg *tgbotapi.MessageConfig) (err error) {
 	switch chatMsg.Command() {
 	case "start":
 		replyMsg.Text = "ヽ(ﾟ∀ﾟ)ﾒ(ﾟ∀ﾟ)ﾉ /help to start"
@@ -44,7 +46,25 @@ func handleChatCommand(chatMsg *tgbotapi.Message, replyMsg *tgbotapi.MessageConf
 	case "rss":
 		replyMsg.Text = "rss services supported currently:"
 		replyMsg.ReplyMarkup = AllRssSupportSubscribeInlineKeyboard
+	case "free_jp_v2ray":
+		if text, err := v2ray.GetVmessCode(Logger); err == nil {
+			replyMsg.Text = text
+			go func() {
+				time.Sleep(time.Second * 30)
+				if _, err := bot.DeleteMessage(tgbotapi.DeleteMessageConfig{
+					ChatID:    chatMsg.Chat.ID,
+					MessageID: chatMsg.MessageID,
+				}); err != nil {
+					Logger.ErrorService("delete get vmess cmd msg", err)
+				} else {
+					Logger.Info("delete get vmess code cmd ok!")
+				}
+			}()
 
+		} else {
+			replyMsg.Text = "get free-jp-v2ray service not available now"
+			Logger.Warnf("free-jp-v2ray", err)
+		}
 	default:
 		replyMsg.Text = "!?(･_･;?"
 		replyMsg.ReplyToMessageID = chatMsg.MessageID

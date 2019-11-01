@@ -1,9 +1,9 @@
-package main
+package gadioRss
 
 import (
 	"github.com/go-redis/redis/v7"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
-	gadioRss "github.com/luoyayu/go_telegram_bot/gadio-rss"
+	logger_tgbot "github.com/luoyayu/go_telegram_bot/logger-tgbot-plugin"
 	"github.com/sirupsen/logrus"
 	"strconv"
 	"strings"
@@ -12,13 +12,14 @@ import (
 
 // update data and included to redis
 
-func GadioStore(bot *tgbotapi.BotAPI, gadio *gadioRss.Radios, rc *redis.Client) {
+func GadioQueryAndStoreAndSend(bot *tgbotapi.BotAPI, gadio *Radios, rc *redis.Client, send bool, sendToUser string, Logger logger_tgbot.ILogger,
+	proactiveNotice func(*tgbotapi.BotAPI, string, string, *tgbotapi.InlineKeyboardMarkup)) {
 	// redis Hash store
-	Logger.Info("store Included")
+	Logger.InfoService("gadio-redis", "begin store Included to redis")
 	for _, includedEntity := range *gadio.Included {
 		// two type `categories` and `users`
-		// gadio:categories:62
-		// gadio:users:124832
+		// 1. gadio:categories:62
+		// 2. gadio:users:124832
 		key := strings.Join([]string{"gadio", includedEntity.Type, includedEntity.ID}, ":")
 		logrus.Info("key:", key)
 
@@ -34,17 +35,16 @@ func GadioStore(bot *tgbotapi.BotAPI, gadio *gadioRss.Radios, rc *redis.Client) 
 				"attributes:logo":         includedEntity.Attributes.Logo,
 				"attributes:background":   includedEntity.Attributes.Background,
 			}).Err(); err != nil {
-				Logger.Error(err)
+				Logger.ErrorService("gadio-redis-included", err)
 			}
 		}
 	}
 
-	Logger.Info("store data")
+	Logger.InfoService("gadio-redis-data", "begin store data to redis")
 	for _, dataEntity := range *gadio.Data {
 		// gadio:radios:116484
 		key := strings.Join([]string{"gadio", dataEntity.Type, dataEntity.ID}, ":")
 		Logger.Info("key:", key)
-		Logger.Info("current key:", rc.Exists(key).Val())
 
 		dur, _ := time.ParseDuration(strconv.Itoa(dataEntity.Attributes.Duration) + "s")
 
@@ -87,12 +87,11 @@ func GadioStore(bot *tgbotapi.BotAPI, gadio *gadioRss.Radios, rc *redis.Client) 
 
 			}
 
-			proactiveNotice(bot, "",
-				dataEntity.Attributes.PublishedAt+"\n"+
-					//dataEntity.Attributes.Title+"\n"+
-					"https://www.gcores.com/radios/"+dataEntity.ID,
-				nil)
-			Logger.Info("send msg to superuser!")
+			if send == true {
+				proactiveNotice(bot, sendToUser, dataEntity.Attributes.PublishedAt+"\n"+
+					"https://www.gcores.com/radios/"+dataEntity.ID, nil)
+				Logger.InfoService("gadio", "send msg to"+sendToUser)
+			}
 		}
 	}
 }

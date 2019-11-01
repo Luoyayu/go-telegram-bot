@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/go-redis/redis/v7"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
-	gadioRss "github.com/luoyayu/go_telegram_bot/gadio-rss"
-	logger_tgbot "github.com/luoyayu/go_telegram_bot/logger-tgbot"
-	dbRedis "github.com/luoyayu/go_telegram_bot/redis-tgbot"
+	gadioRss "github.com/luoyayu/go_telegram_bot/gadio-tgbot-plugin"
+	logger_tgbot "github.com/luoyayu/go_telegram_bot/logger-tgbot-plugin"
+	dbRedis "github.com/luoyayu/go_telegram_bot/redis-tgbot-plugin"
 	"github.com/sirupsen/logrus"
 	"os"
 	"strings"
@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	helpCmds             = "/start\n/redis\n/sayhi\n/home\n/gradios [5]\t默认最新5条"
+	helpCmds             = "/start\n/redis\n/sayhi\n/home\n/gradios [5]\n/free_jp_v2ray"
 	dbClient             *redis.Client
 	dbClientMutex        sync.Mutex
 	AliToken             string
@@ -29,15 +29,13 @@ var (
 
 func initAndTestDB(bot *tgbotapi.BotAPI, err error) {
 	if err != nil {
-		Logger.Error("<<< redis is still down <<<")
-		proactiveNotice(bot, "", "redis is down", nil)
+		Logger.Error("<<< redis is still down >>>")
 	} else {
-		Logger.Info("<<< redis is ok <<<")
+		Logger.Info("<<< redis is ok >>>")
 
-		if err := dbRedis.SetAllPermissions(dbClient, "voice,gadio,superuser,homedevice"); err != nil {
+		/*if err := dbRedis.SetAllPermissions(dbClient, "voice,gadio,superuser,homedevice"); err != nil {
 			Logger.ErrorService("redis", "access all permissions is down")
-			proactiveNotice(bot, "", "get AllPermissions error: "+err.Error(), nil)
-		}
+		}*/
 
 		// new super user
 		superUser := dbRedis.User{}
@@ -96,15 +94,16 @@ func main() {
 	u.Timeout = 60
 	updates, err := bot.GetUpdatesChan(u)
 
-	grantedIDs := strings.Split(os.Getenv("GRANTEDIDS"), ",")
-
 	go func() {
 		for {
 
 			if radios, err := gadioRss.GetGRadios(5); err == nil && dbClient != nil {
-				GadioStore(bot, radios, dbClient)
+				gadioRss.GadioQueryAndStoreAndSend(bot, radios, dbClient, true, "", Logger, proactiveNotice)
+
 			} else {
-				Logger.ErrorService("gradio", err.Error())
+				if err != nil {
+					Logger.ErrorService("gadio", err.Error())
+				}
 			}
 			time.Sleep(time.Minute * 20)
 		}
@@ -129,7 +128,6 @@ func main() {
 		}
 	}()
 
-	Logger.Debug("grantedIDs: ", grantedIDs)
 	for update := range updates {
 
 		// check if update is rom new user
@@ -147,16 +145,17 @@ func main() {
 		user.SetId(fmt.Sprint(userIDint))
 		if dbClient == nil {
 			Logger.ErrorService("redis", "redis is down when Get user Info")
-			proactiveNotice(bot, fmt.Sprint(update.Message.From.ID), "redis is down", nil)
+			proactiveNotice(bot, fmt.Sprint(update.Message.From.ID), "service is not available now.", nil)
 		} else {
 			if err := user.Get(dbClient); err != nil {
-				if err.Error() == "redis error" {
+				if strings.HasPrefix(err.Error(), "redis") {
 					Logger.ErrorService("redis", err)
 					proactiveNotice(bot, fmt.Sprint(update.Message.From.ID),
-						"redis is unavailable now", nil)
+						"user service is not available now.", nil)
 					continue
 				} else if err.Error() != "" {
 					Logger.Info("the user info is not in database, err: ", err)
+					// show Register Inline Keyboard
 					showRegisterInlineKeyboard := tgbotapi.NewInlineKeyboardMarkup(
 						tgbotapi.NewInlineKeyboardRow(
 							tgbotapi.NewInlineKeyboardButtonData("YES", BtnIdRegister),
@@ -166,9 +165,9 @@ func main() {
 					opVal := dbClient.SAdd(dbRedis.RedisKeys.UserNotAuthorizedAccess, user.Id()).Val()
 					Logger.Infof("add the user[%s] to %s: %d\n", user.Id(), dbRedis.RedisKeys.UserNotAuthorizedAccess, opVal)
 
-					if opVal == 0 {
+					if opVal == 0 { // user still in UserNotAuthorizedAccess
 						logrus.Infof("the user[%s] is already in %s\n", user.Id(), dbRedis.RedisKeys.UserNotAuthorizedAccess)
-						// allow goto handleChatCallback
+						// ! allow UserNotAuthorizedAccess goto handleChatCallback
 					} else if opVal == 1 {
 						proactiveNotice(bot, user.Id(),
 							"you are unauthorized user, do you want to pull a request?", &showRegisterInlineKeyboard)
@@ -177,25 +176,25 @@ func main() {
 				}
 			} else {
 				Logger.Infof("welcome user [%s][%s]", user.Name(), user.Id())
-				Logger.Info("you have Permissions:", user.PermissionsStr())
+				Logger.Infof("the user[%s] have Permissions: %s", user.Name(), user.PermissionsStr())
 			}
-		}
 
-		// TODO check user has unfinished task
-		if userTasksStackName := "user:" + user.Id() + ":tasks"; dbClient.LLen(userTasksStackName).Val() != 0 {
-			if update.Message != nil {
-				err = handleUserUnFinishedTask(userTasksStackName, dbClient.LPop(userTasksStackName).Val(), update.Message)
-				if err != nil {
-					Logger.Warnf("user task ", userTasksStackName, " still unfinished")
+			// TODO check user has unfinished task
+			if userTasksStackName := "user:" + user.Id() + ":tasks"; dbClient.LLen(userTasksStackName).Val() != 0 {
+				if update.Message != nil {
+					err = handleUserUnFinishedTask(userTasksStackName, dbClient.LPop(userTasksStackName).Val(), update.Message)
+					if err != nil {
+						Logger.Warnf("user task ", userTasksStackName, " still unfinished")
+					} else {
+						Logger.Info("finish user all task")
+					}
 				} else {
-					Logger.Info("finish user all task")
+					proactiveNotice(bot, user.Id(), "the input is illegal", nil)
 				}
+				continue
 			} else {
-				proactiveNotice(bot, user.Id(), "the input is illegal", nil)
+				Logger.Info("user don't have unfinished task")
 			}
-			continue
-		} else {
-			Logger.Info("user don't have unfinished task")
 		}
 
 		// FIXME use redis user:id:permissions to replace the hard code
@@ -245,7 +244,7 @@ func main() {
 
 			// if message is command
 			if chatMsg.IsCommand() {
-				err := handleChatCommand(chatMsg, &replyMsg)
+				err := handleChatCommand(bot, chatMsg, &replyMsg)
 				if err != nil {
 					Logger.ErrorAndSend(&replyMsg, err)
 					goto SendChattableMessages
@@ -319,9 +318,23 @@ func main() {
 
 			for _, sendEntity := range sendList {
 				//SendAndLog(bot, &sendEntity)
-				if _, err := bot.Send(sendEntity); err != nil {
+				if resp, err := bot.Send(sendEntity); err != nil {
 					Logger.Warn(err)
 				} else {
+					go func() {
+						time.Sleep(time.Second * 30)
+						if chatMsg.Command() == "free_jp_v2ray" {
+							if _, err := bot.DeleteMessage(tgbotapi.DeleteMessageConfig{
+								ChatID:    resp.Chat.ID,
+								MessageID: resp.MessageID,
+							}); err != nil {
+								Logger.ErrorService("delete vmess code msg i sent", err)
+							} else {
+								Logger.Info("delete vmess code msg i sent ok!")
+							}
+						}
+					}()
+
 					Logger.Info("sending to ", replyMsg.ChatID, " ", replyMsg.Text)
 				}
 			}

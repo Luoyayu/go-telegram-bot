@@ -1,7 +1,7 @@
 package main
 
 import (
-	dbRedis "github.com/luoyayu/go_telegram_bot/redis-tgbot"
+	dbRedis "github.com/luoyayu/go_telegram_bot/redis-tgbot-plugin"
 	"testing"
 )
 

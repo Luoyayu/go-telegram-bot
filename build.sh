@@ -22,4 +22,4 @@ elif [[ "$OS" == "windows" ]]; then
   export GOARCH=amd64
 fi
 
-go build -ldflags "-s -w" -o "go_telegram_bot_$OS" *.go
+go build -ldflags "-s -w" -o "./build/go_telegram_bot_$OS" *.go

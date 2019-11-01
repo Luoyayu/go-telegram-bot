@@ -7,17 +7,17 @@ import (
 )
 
 func proactiveNotice(bot *tgbotapi.BotAPI, userid string, messageText string, inlineKeyboard *tgbotapi.InlineKeyboardMarkup) {
-	var userid64 int64
+	var userID64 int64
 	var err error
 	if userid == "" {
-		userid64, err = strconv.ParseInt(os.Getenv("SUPER_USER_ID"), 10, 64)
+		userID64, err = strconv.ParseInt(os.Getenv("SUPER_USER_ID"), 10, 64)
 	} else {
-		userid64, err = strconv.ParseInt(userid, 10, 64)
+		userID64, err = strconv.ParseInt(userid, 10, 64)
 	}
 	if err != nil {
 		Logger.Error("no chat id")
 	} else {
-		msg := tgbotapi.NewMessage(userid64, messageText)
+		msg := tgbotapi.NewMessage(userID64, messageText)
 		if inlineKeyboard != nil {
 			msg.ReplyMarkup = inlineKeyboard
 		}

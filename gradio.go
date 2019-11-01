@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
-	"github.com/luoyayu/go_telegram_bot/gadio-rss"
+	"github.com/luoyayu/go_telegram_bot/gadio-tgbot-plugin"
 	"strconv"
 	"strings"
 )
