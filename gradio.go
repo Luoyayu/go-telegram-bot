@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/luoyayu/go_telegram_bot/gadio-tgbot-plugin"
+	tg_tgbot "github.com/luoyayu/go_telegram_bot/tg-tgbot-plugin"
 	"strconv"
 	"strings"
 )
@@ -35,11 +36,11 @@ func newGRadioListInlineKeyboard(radiosNum int) error {
 		}
 
 		for _, radio := range *GRadios.Data {
-			oneRowOneBtn(radio.Attributes.Title, fmt.Sprint("radio", radio.ID), &GRadiosListInlineKeyboard)
+			tg_tgbot.OneRowOneBtn(radio.Attributes.Title, fmt.Sprint("radio", radio.ID), &GRadiosListInlineKeyboard, Logger)
 			//radiosTitle += strings.Split(radio.Attributes.PublishedAt, "T")[0] + "\n\t"
 			//radiosTitle += radio.Attributes.Title + "\n"
 		}
-		oneRowOneBtn(">>close", BtnIdCloseGRadiosInlineKeyboard, &GRadiosListInlineKeyboard)
+		tg_tgbot.OneRowOneBtn(">>close", BtnIdCloseGRadiosInlineKeyboard, &GRadiosListInlineKeyboard, Logger)
 	}
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/luoyayu/go_telegram_bot/gadio-tgbot-plugin"
 	dbRedis "github.com/luoyayu/go_telegram_bot/redis-tgbot-plugin"
+	tg_tgbot "github.com/luoyayu/go_telegram_bot/tg-tgbot-plugin"
 
 	"strconv"
 	"strings"
@@ -214,9 +215,9 @@ func handleChatCallback(bot *tgbotapi.BotAPI, user *dbRedis.User, update *tgbota
 		gRadioInfoKeyboard := tgbotapi.NewInlineKeyboardMarkup()
 
 		for callbackText, btnText := range btnEntities {
-			oneRowOneBtn(btnText, callbackText, &gRadioInfoKeyboard)
+			tg_tgbot.OneRowOneBtn(btnText, callbackText, &gRadioInfoKeyboard, Logger)
 		}
-		oneRowOneBtn(">>back", BtnIdBackToRadiosInfo, &gRadioInfoKeyboard)
+		tg_tgbot.OneRowOneBtn(">>back", BtnIdBackToRadiosInfo, &gRadioInfoKeyboard, Logger)
 		_, err = bot.Send(editMessageReplyMarkup(callbackQuery, &gRadioInfoKeyboard))
 		if err != nil {
 			Logger.ErrorAndSend(&replyMsg, err)
@@ -247,9 +248,12 @@ func handleChatCallback(bot *tgbotapi.BotAPI, user *dbRedis.User, update *tgbota
 				for subSubName, subSubItem := range v {
 					Logger.Infof("%+v %+v\n", subSubName, subSubItem)
 					Logger.Infof("%+v\n", subSubItem)
-					oneRowOneBtn(subSubItem["path"]+subSubItem["help"], CallbackPrefixRssSub+requestRssName+"_"+subSubName, &rssAvailableSubsInlineKeyboard)
+					tg_tgbot.OneRowOneBtn(
+						subSubItem["path"]+subSubItem["help"], CallbackPrefixRssSub+requestRssName+"_"+subSubName,
+						&rssAvailableSubsInlineKeyboard, Logger)
 				}
-				oneRowOneBtn("<<back", "back to all rss supporting subscribes", &rssAvailableSubsInlineKeyboard)
+				tg_tgbot.OneRowOneBtn("<<back", "back to all rss supporting subscribes",
+					&rssAvailableSubsInlineKeyboard, Logger)
 				_, err := bot.Send(editMessageReplyMarkup(callbackQuery, &rssAvailableSubsInlineKeyboard))
 				if err != nil {
 					Logger.Error(err)

@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-func GetVmessCode(Logger logger_tgbot.ILogger) (code string, err error) {
+func GetVmessCode(logger logger_tgbot.ILogger) (code string, err error) {
 	var resp *http.Response
 	var doc *goquery.Document
 

@@ -1,4 +1,4 @@
-package main
+package ali_tgbot_plugin
 
 import (
 	"testing"

@@ -1,0 +1,5 @@
+package gadioRss
+
+func ListenAndPush()  {
+	
+}

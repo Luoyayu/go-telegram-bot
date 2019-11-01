@@ -22,7 +22,7 @@ var (
 			tgbotapi.NewInlineKeyboardButtonData("status", BtnIdStatusOfLight),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("<<back", BtnIdBackToHomeDevices),
+			tgbotapi.NewInlineKeyboardButtonData("<< back", BtnIdBackToHomeDevices),
 		),
 	)
 )

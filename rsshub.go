@@ -2,6 +2,7 @@ package main
 
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	tg_tgbot "github.com/luoyayu/go_telegram_bot/tg-tgbot-plugin"
 	"net/http"
 	"os"
 )
@@ -63,9 +64,9 @@ func getAllRssSupportedSubscribe() {
 	AllRssSupportSubscribeInlineKeyboard = tgbotapi.NewInlineKeyboardMarkup()
 	for k, _ := range RssHubAllSubMap {
 		Logger.InfofService("rssHub", k+" is up.")
-		oneRowOneBtn(k, "rssSub_"+k, &AllRssSupportSubscribeInlineKeyboard)
+		tg_tgbot.OneRowOneBtn(k, "rssSub_"+k, &AllRssSupportSubscribeInlineKeyboard, Logger)
 	}
-	oneRowOneBtn(">>close", BtnIdClose, &AllRssSupportSubscribeInlineKeyboard)
+	tg_tgbot.OneRowOneBtn(">> close", BtnIdClose, &AllRssSupportSubscribeInlineKeyboard, Logger)
 
 	Logger.InfoService("rssHub", RssHubAllSubMap["youtube"]["user"]["path"] == "youtube/user/")
 }

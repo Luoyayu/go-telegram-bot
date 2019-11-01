@@ -3,38 +3,39 @@
 
 # env variable
 
- export TELEGRAM_APITOKEN=""   
- export BOT_DEBUG="false"   
- export SUPER_USER_ID=""    
+ export TELEGRAM_APITOKEN=""      
+ export BOT_DEBUG="false"     
+ export SUPER_USER_ID=""     
+  export SUPER_USER_NAME=""       
 
 > costumed service    
 
-export SMART_HOME_API_URL=""   
-export SMART_HOME_APITOKEN=""   
+export SMART_HOME_API_URL=""    
+export SMART_HOME_APITOKEN=""      
 
 > Ali Yun ASR Service       
 make sure you have **ffmpeg** in PATH to convert .oag(48k) to .wav(18k)   
 
-export ALI_ASR_APPKEY=""  
-export ALI_ACCESS_KEYID=""   
-export ALI_ACCESS_KEYSECRET="" 
-
-export ASR_API_URL="http://nls-gateway.cn-shanghai.aliyuncs.com/stream/v1/asr"   
-export AUDIO_SAMPLING_RATE_ASR="16000" # 16000 or 8000    
+export ALI_ASR_APPKEY=""    
+export ALI_ACCESS_KEYID=""      
+export ALI_ACCESS_KEYSECRET=""      
+ 
+export ASR_API_URL="http://nls-gateway.cn-shanghai.aliyuncs.com/stream/v1/asr"     
+export AUDIO_SAMPLING_RATE_ASR="16000" # 16000 or 8000      
 
 > redis   
 
-export RedisAddress="localhost:6379"
-export RedisDB=0
-export RedisPassword=""
+export RedisAddress="localhost:6379"    
+export RedisDB=0   
+export RedisPassword=""    
  
 # Redis
 
 
-AliToken is store in redis and set EXPIRE time by Gettoken API
+AliToken is store in redis and set EXPIRE time by Gettoken API   
 
 
-# build  
+# build   
 
 `bash build.sh [osx/windows/linux]`
 
@@ -46,20 +47,20 @@ keep env blank if you don't need the service
 
 # TODO
 
-- [ ] [rsshub](https://docs.rsshub.app)
+- [ ] [rsshub](https://docs.rsshub.app)   
 
 
 # reference
 
-[ALi ASR](https://nls-portal.console.aliyun.com/overview)  
-[Ali GetToken](https://help.aliyun.com/document_detail/72153.html)   
-[Telegram Bot API](https://core.telegram.org/api)    
-[Telegram Bot API Methods](https://core.telegram.org/methods)   
-[Telegram Bot Platform](https://telegram.org/blog/bot-revolution)  
-[Golang Telegram Bot Api](https://github.com/go-telegram-bot-api/telegram-bot-api)  
+[ALi ASR](https://nls-portal.console.aliyun.com/overview)    
+[Ali GetToken](https://help.aliyun.com/document_detail/72153.html)     
+[Telegram Bot API](https://core.telegram.org/api)      
+[Telegram Bot API Methods](https://core.telegram.org/methods)     
+[Telegram Bot Platform](https://telegram.org/blog/bot-revolution)    
+[Golang Telegram Bot Api](https://github.com/go-telegram-bot-api/telegram-bot-api)    
 
 
 # Licence
 
-MIT
+MIT   
 

@@ -12,10 +12,10 @@ import (
 
 // update data and included to redis
 
-func GadioQueryAndStoreAndSend(bot *tgbotapi.BotAPI, gadio *Radios, rc *redis.Client, send bool, sendToUser string, Logger logger_tgbot.ILogger,
-	proactiveNotice func(*tgbotapi.BotAPI, string, string, *tgbotapi.InlineKeyboardMarkup)) {
+func GadioQueryAndStoreAndSend(bot *tgbotapi.BotAPI, gadio *Radios, rc *redis.Client, send bool, sendToUser string, logger logger_tgbot.ILogger,
+	proactiveNotice func(*tgbotapi.BotAPI, string, string, *tgbotapi.InlineKeyboardMarkup, logger_tgbot.ILogger)) {
 	// redis Hash store
-	Logger.InfoService("gadio-redis", "begin store Included to redis")
+	logger.InfoService("gadio-redis", "begin store Included to redis")
 	for _, includedEntity := range *gadio.Included {
 		// two type `categories` and `users`
 		// 1. gadio:categories:62
@@ -35,16 +35,16 @@ func GadioQueryAndStoreAndSend(bot *tgbotapi.BotAPI, gadio *Radios, rc *redis.Cl
 				"attributes:logo":         includedEntity.Attributes.Logo,
 				"attributes:background":   includedEntity.Attributes.Background,
 			}).Err(); err != nil {
-				Logger.ErrorService("gadio-redis-included", err)
+				logger.ErrorService("gadio-redis-included", err)
 			}
 		}
 	}
 
-	Logger.InfoService("gadio-redis-data", "begin store data to redis")
+	logger.InfoService("gadio-redis-data", "begin store data to redis")
 	for _, dataEntity := range *gadio.Data {
 		// gadio:radios:116484
 		key := strings.Join([]string{"gadio", dataEntity.Type, dataEntity.ID}, ":")
-		Logger.Info("key:", key)
+		logger.Info("key:", key)
 
 		dur, _ := time.ParseDuration(strconv.Itoa(dataEntity.Attributes.Duration) + "s")
 
@@ -53,7 +53,7 @@ func GadioQueryAndStoreAndSend(bot *tgbotapi.BotAPI, gadio *Radios, rc *redis.Cl
 				strings.Join([]string{"gadio", "categories", dataEntity.Relationships.Category.Data.ID}, ":"),
 				"attributes:name").Val()
 
-			Logger.Info("categoryName: ", strings.Join([]string{"gadio", "categories", dataEntity.Relationships.Category.Data.ID}, ":"))
+			logger.Info("categoryName: ", strings.Join([]string{"gadio", "categories", dataEntity.Relationships.Category.Data.ID}, ":"))
 
 			if err := rc.HMSet(key, map[string]interface{}{
 				"attributes:title":        dataEntity.Attributes.Title,
@@ -65,7 +65,7 @@ func GadioQueryAndStoreAndSend(bot *tgbotapi.BotAPI, gadio *Radios, rc *redis.Cl
 				"relationships:category:id":   dataEntity.Relationships.Category.Data.ID,
 				"relationships:category:name": categoryName,
 			}).Err(); err != nil {
-				Logger.Error(err)
+				logger.Error(err)
 			}
 
 			for _, djEntity := range *dataEntity.Relationships.Djs.Data {
@@ -77,20 +77,20 @@ func GadioQueryAndStoreAndSend(bot *tgbotapi.BotAPI, gadio *Radios, rc *redis.Cl
 				// gadio:radios:116484:djs:nickname
 
 				if err := rc.LPush(key+":djs:nickname", djName).Err(); err != nil {
-					Logger.Error(err)
+					logger.Error(err)
 				}
 
 				//gadio:radios:116484:djs:id
 				if err := rc.LPush(key+":djs:id", djEntity.ID).Err(); err != nil {
-					Logger.Error(err)
+					logger.Error(err)
 				}
 
 			}
 
 			if send == true {
 				proactiveNotice(bot, sendToUser, dataEntity.Attributes.PublishedAt+"\n"+
-					"https://www.gcores.com/radios/"+dataEntity.ID, nil)
-				Logger.InfoService("gadio", "send msg to"+sendToUser)
+					"https://www.gcores.com/radios/"+dataEntity.ID, nil, logger)
+				logger.InfoService("gadio", "send msg to"+sendToUser)
 			}
 		}
 	}

@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-func handleChatCommand(bot *tgbotapi.BotAPI, chatMsg *tgbotapi.Message, replyMsg *tgbotapi.MessageConfig) (err error) {
+func HandleChatCommand(bot *tgbotapi.BotAPI, chatMsg *tgbotapi.Message, replyMsg *tgbotapi.MessageConfig) (err error) {
 	switch chatMsg.Command() {
 	case "start":
 		replyMsg.Text = "ヽ(ﾟ∀ﾟ)ﾒ(ﾟ∀ﾟ)ﾉ /help to start"
@@ -22,7 +22,7 @@ func handleChatCommand(bot *tgbotapi.BotAPI, chatMsg *tgbotapi.Message, replyMsg
 		replyMsg.Text = "you can ask me by these commands:\n" + helpCmds
 	case "redis":
 		if dbClient != nil {
-			replyMsg.Text = "(￣.￣)) redis is ok."
+			replyMsg.Text = "(￣.￣)) redis is up."
 		} else {
 			replyMsg.Text = "(￣^￣)), redis is down."
 		}
@@ -72,7 +72,7 @@ func handleChatCommand(bot *tgbotapi.BotAPI, chatMsg *tgbotapi.Message, replyMsg
 	return
 }
 
-func handleVoiceMsg(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) error {
+func HandleVoiceMsg(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) error {
 	Logger.Info("get voice message, fileID: ", msg.Voice.FileID)
 	voiceFileDirectUrl, err := bot.GetFileDirectURL(msg.Voice.FileID)
 	ogaFile, _ := bot.GetFile(tgbotapi.FileConfig{FileID: msg.Voice.FileID})
@@ -83,7 +83,7 @@ func handleVoiceMsg(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) error {
 		Logger.Error("Download voice from telegram server error: ", err)
 	} else {
 		fileNameWOExtension := "voice"
-		file, _ := os.Create(fileNameWOExtension + ".oga")
+		file, _ := os.Create("./tmp/" + fileNameWOExtension + ".oga")
 		n, _ := io.Copy(file, resp.Body)
 		if n != int64(ogaFile.FileSize) {
 			errorString := fmt.Sprintf("download size: %d\tvoice file  in telegram server size: %d", n, ogaFile.FileSize)
@@ -103,9 +103,9 @@ func handleVoiceMsg(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) error {
 
 func convertOga2Wav48K(fileNameWOExt string) (error, string) {
 	cmd := exec.Command("ffmpeg", "-y", "-i",
-		fileNameWOExt+".oga", "-ar",
+		"./tmp/"+fileNameWOExt+".oga", "-ar",
 		os.Getenv("AUDIO_SAMPLING_RATE_ASR"),
-		fileNameWOExt+".wav")
+		"./tmp/"+fileNameWOExt+".wav")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
@@ -116,7 +116,7 @@ func convertOga2Wav48K(fileNameWOExt string) (error, string) {
 	return nil, ""
 }
 
-func handleUserUnFinishedTask(taskName, task string, message *tgbotapi.Message) (err error) {
+func HandleUserUnFinishedTask(taskName, task string, message *tgbotapi.Message) (err error) {
 	if strings.HasPrefix(task, CallbackPrefixRssSub) {
 		param := strings.Split(task, "_")
 		Logger.Info("user unfinished task: ", param)
@@ -150,7 +150,7 @@ func handleUserUnFinishedTask(taskName, task string, message *tgbotapi.Message) 
 	}
 }*/
 
-func checkUserPermissions(user *dbRedis.User, expectPermission string) (withThePermission bool) {
+func CheckUserPermissions(user *dbRedis.User, expectPermission string) (withThePermission bool) {
 	_, withThePermission = user.PermissionsMap()[expectPermission]
 	return
 }

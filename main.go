@@ -7,6 +7,7 @@ import (
 	gadioRss "github.com/luoyayu/go_telegram_bot/gadio-tgbot-plugin"
 	logger_tgbot "github.com/luoyayu/go_telegram_bot/logger-tgbot-plugin"
 	dbRedis "github.com/luoyayu/go_telegram_bot/redis-tgbot-plugin"
+	tg_tgbot "github.com/luoyayu/go_telegram_bot/tg-tgbot-plugin"
 	"github.com/sirupsen/logrus"
 	"os"
 	"strings"
@@ -15,23 +16,33 @@ import (
 )
 
 var (
-	helpCmds             = "/start\n/redis\n/sayhi\n/home\n/gradios [5]\n/free_jp_v2ray"
-	dbClient             *redis.Client
-	dbClientMutex        sync.Mutex
-	AliToken             string
+	helpCmds = "/start\n/redis\n/sayhi\n/home\n/gradios [5]\n/free_jp_v2ray"
+
+	dbClient      *redis.Client
+	dbClientMutex sync.Mutex
+
 	RssHubAvailable      bool
 	RssHubAvailableMutex sync.Mutex
 )
 
 var (
-	Logger = logger_tgbot.NewLogger()
+	Logger        = logger_tgbot.NewLogger()
+	AliToken      string
+	SuperUserID   string
+	SuperUserName string
 )
+
+func init() {
+	SuperUserID = os.Getenv("SUPER_USER_ID")
+	SuperUserName = os.Getenv("SUPER_USER_NAME")
+
+}
 
 func initAndTestDB(bot *tgbotapi.BotAPI, err error) {
 	if err != nil {
-		Logger.Error("<<< redis is still down >>>")
+		Logger.Error("<<< redis is down >>>")
 	} else {
-		Logger.Info("<<< redis is ok >>>")
+		Logger.Info("<<< redis is up >>>")
 
 		/*if err := dbRedis.SetAllPermissions(dbClient, "voice,gadio,superuser,homedevice"); err != nil {
 			Logger.ErrorService("redis", "access all permissions is down")
@@ -39,14 +50,19 @@ func initAndTestDB(bot *tgbotapi.BotAPI, err error) {
 
 		// new super user
 		superUser := dbRedis.User{}
-		superUser.SetId(os.Getenv("SUPER_USER_ID"))
+		superUser.SetId(SuperUserID)
+		if superUser.Id() == "" {
+			Logger.FatalfService("init service", "SUPER_USER_ID is void")
+		}
+
 		// super user exists
 		if dbRedis.CheckUserExist(dbClient, superUser.Id()) {
 			Logger.Info("superuser already exists")
 		} else {
-
-			// FIXME get superuser name from env
-			superUser.SetName("luoyayu")
+			if SuperUserName == "" {
+				SuperUserName = "superuser"
+			}
+			superUser.SetName(SuperUserName)
 			superUser.SetPermissionsMap(map[string]bool{"superuser": true})
 			superUser.SetPermissionsStr("superuser")
 			// super user not exists
@@ -58,48 +74,50 @@ func initAndTestDB(bot *tgbotapi.BotAPI, err error) {
 			}
 		}
 
-		// get ALI_ACCESS_TOKEN from redis
-		AliToken = dbClient.Get("ALI_ACCESS_TOKEN").Val()
-		Logger.Infof("AliToken in redis: %q", AliToken)
-
-		if AliToken == "" {
+		if AliToken = dbClient.Get("ALI_ACCESS_TOKEN").Val(); AliToken == "" {
 			if err := updateTokenAndStore(); err != nil {
 				Logger.Error(err)
 			}
-		} else {
-			Logger.InfofService("redis", "ALI_ACCESS_TOKEN ttl: %.0fs", dbClient.TTL("ALI_ACCESS_TOKEN").Val().Seconds())
 		}
+		Logger.InfofService("redis", "ALI_ACCESS_TOKEN ttl: %.0fs", dbClient.TTL("ALI_ACCESS_TOKEN").Val().Seconds())
 	}
 }
 
 func main() {
-	bot, err := tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_APITOKEN"))
-	if err != nil {
+	var bot *tgbotapi.BotAPI
+	var err error
+
+	if bot, err = tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_APITOKEN")); err != nil {
 		Logger.Fatal(err)
 	}
+
 	bot.Debug = false
 	if os.Getenv("BOT_DEBUG") == "true" {
 		bot.Debug = true
 	}
 
-	Logger.Infof("Authorized on account %s", bot.Self.UserName)
+	Logger.Infof("Authorized on account Name: %s", bot.Self.UserName)
+	Logger.Infof("Authorized on account ID: %s", bot.Self.ID)
 
 	dbClientMutex.Lock()
 	dbClient, err = dbRedis.NewRedisClient()
 	dbClientMutex.Unlock()
 
+	// the error is from dbRedis.NewRedisClient()
 	initAndTestDB(bot, err)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 	updates, err := bot.GetUpdatesChan(u)
 
+	if err != nil {
+		Logger.ErrorService("bot", "get update filed!")
+	}
+
 	go func() {
 		for {
-
 			if radios, err := gadioRss.GetGRadios(5); err == nil && dbClient != nil {
-				gadioRss.GadioQueryAndStoreAndSend(bot, radios, dbClient, true, "", Logger, proactiveNotice)
-
+				gadioRss.GadioQueryAndStoreAndSend(bot, radios, dbClient, true, "", Logger, tg_tgbot.ProactiveNotice)
 			} else {
 				if err != nil {
 					Logger.ErrorService("gadio", err.Error())
@@ -145,13 +163,13 @@ func main() {
 		user.SetId(fmt.Sprint(userIDint))
 		if dbClient == nil {
 			Logger.ErrorService("redis", "redis is down when Get user Info")
-			proactiveNotice(bot, fmt.Sprint(update.Message.From.ID), "service is not available now.", nil)
+			tg_tgbot.ProactiveNotice(bot, fmt.Sprint(update.Message.From.ID), "service is not available now.", nil, Logger)
 		} else {
 			if err := user.Get(dbClient); err != nil {
 				if strings.HasPrefix(err.Error(), "redis") {
 					Logger.ErrorService("redis", err)
-					proactiveNotice(bot, fmt.Sprint(update.Message.From.ID),
-						"user service is not available now.", nil)
+					tg_tgbot.ProactiveNotice(bot, fmt.Sprint(update.Message.From.ID),
+						"user service is not available now.", nil, Logger)
 					continue
 				} else if err.Error() != "" {
 					Logger.Info("the user info is not in database, err: ", err)
@@ -169,8 +187,8 @@ func main() {
 						logrus.Infof("the user[%s] is already in %s\n", user.Id(), dbRedis.RedisKeys.UserNotAuthorizedAccess)
 						// ! allow UserNotAuthorizedAccess goto handleChatCallback
 					} else if opVal == 1 {
-						proactiveNotice(bot, user.Id(),
-							"you are unauthorized user, do you want to pull a request?", &showRegisterInlineKeyboard)
+						tg_tgbot.ProactiveNotice(bot, user.Id(),
+							"you are unauthorized user, do you want to pull a request?", &showRegisterInlineKeyboard, Logger)
 						continue
 					}
 				}
@@ -182,14 +200,14 @@ func main() {
 			// TODO check user has unfinished task
 			if userTasksStackName := "user:" + user.Id() + ":tasks"; dbClient.LLen(userTasksStackName).Val() != 0 {
 				if update.Message != nil {
-					err = handleUserUnFinishedTask(userTasksStackName, dbClient.LPop(userTasksStackName).Val(), update.Message)
+					err = HandleUserUnFinishedTask(userTasksStackName, dbClient.LPop(userTasksStackName).Val(), update.Message)
 					if err != nil {
 						Logger.Warnf("user task ", userTasksStackName, " still unfinished")
 					} else {
 						Logger.Info("finish user all task")
 					}
 				} else {
-					proactiveNotice(bot, user.Id(), "the input is illegal", nil)
+					tg_tgbot.ProactiveNotice(bot, user.Id(), "the input is illegal", nil, Logger)
 				}
 				continue
 			} else {
@@ -244,7 +262,7 @@ func main() {
 
 			// if message is command
 			if chatMsg.IsCommand() {
-				err := handleChatCommand(bot, chatMsg, &replyMsg)
+				err := HandleChatCommand(bot, chatMsg, &replyMsg)
 				if err != nil {
 					Logger.ErrorAndSend(&replyMsg, err)
 					goto SendChattableMessages
@@ -263,7 +281,7 @@ func main() {
 				}
 
 				// convery voice from oga to wav(16K sampling rate)
-				if err = handleVoiceMsg(bot, chatMsg); err != nil {
+				if err = HandleVoiceMsg(bot, chatMsg); err != nil {
 					Logger.Error(&replyMsg, err)
 					goto SendChattableMessages
 				}
@@ -271,7 +289,7 @@ func main() {
 				// first try, asr may broken token
 				asrResponse := handleVoiceMsg2Text(
 					os.Getenv("ALI_ASR_APPKEY"), AliToken,
-					"voice.wav", "pcm", os.Getenv("AUDIO_SAMPLING_RATE_ASR"),
+					"./tmp/voice.wav", "pcm", os.Getenv("AUDIO_SAMPLING_RATE_ASR"),
 					true, true, false)
 
 				// net error
@@ -294,7 +312,7 @@ func main() {
 						// second try, asr from broken token
 						asrResponse = handleVoiceMsg2Text(
 							os.Getenv("ALI_ASR_APPKEY"), AliToken,
-							"voice.wav", "pcm", os.Getenv("AUDIO_SAMPLING_RATE_ASR"),
+							"./tmp/voice.wav", "pcm", os.Getenv("AUDIO_SAMPLING_RATE_ASR"),
 							true, true, false)
 					}
 
