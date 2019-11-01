@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 )
 
@@ -29,15 +28,14 @@ func HandleChatCommand(bot *tgbotapi.BotAPI, chatMsg *tgbotapi.Message, replyMsg
 	case "sayhi":
 		replyMsg.Text = "Hi :)"
 	case "home":
-		if os.Getenv("SMART_HOME_API_URL") != "" {
+		if SmartHomeApiUrl != "" {
 			replyMsg.ReplyMarkup = HomeDevicesInlineKeyboard
 		} else {
-			err = fmt.Errorf("not support control Smart Home")
+			err = fmt.Errorf("not support Smart Home Service!")
 		}
 	case "gradios":
 		var text string
-		text, err = handleChatGRadios(chatMsg)
-		if err != nil {
+		if text, err = handleChatGRadios(chatMsg); err != nil {
 			return
 		} else {
 			replyMsg.Text = text
@@ -45,7 +43,7 @@ func HandleChatCommand(bot *tgbotapi.BotAPI, chatMsg *tgbotapi.Message, replyMsg
 		}
 	case "rss":
 		replyMsg.Text = "rss services supported currently:"
-		replyMsg.ReplyMarkup = AllRssSupportSubscribeInlineKeyboard
+		replyMsg.ReplyMarkup = AllRssSupportSubscribedDomainInlineKeyboard
 	case "free_jp_v2ray":
 		if text, err := v2ray.GetVmessCode(Logger); err == nil {
 			replyMsg.Text = text
@@ -60,11 +58,11 @@ func HandleChatCommand(bot *tgbotapi.BotAPI, chatMsg *tgbotapi.Message, replyMsg
 					Logger.Info("delete get vmess code cmd ok!")
 				}
 			}()
-
 		} else {
 			replyMsg.Text = "get free-jp-v2ray service not available now"
 			Logger.Warnf("free-jp-v2ray", err)
 		}
+
 	default:
 		replyMsg.Text = "!?(･_･;?"
 		replyMsg.ReplyToMessageID = chatMsg.MessageID
@@ -116,7 +114,7 @@ func convertOga2Wav48K(fileNameWOExt string) (error, string) {
 	return nil, ""
 }
 
-func HandleUserUnFinishedTask(taskName, task string, message *tgbotapi.Message) (err error) {
+/*func HandleUserUnFinishedTask(taskName, task string, message *tgbotapi.Message) (err error) {
 	if strings.HasPrefix(task, CallbackPrefixRssSub) {
 		param := strings.Split(task, "_")
 		Logger.Info("user unfinished task: ", param)
@@ -135,7 +133,7 @@ func HandleUserUnFinishedTask(taskName, task string, message *tgbotapi.Message) 
 	}
 	return err
 }
-
+*/
 /*func SendAndLog(bot *tgbotapi.BotAPI, replyMsg *tgbotapi.Chattable) {
 	if replyMsg.Text == "" {
 		Logger.Error("reply message is void, do nothing")

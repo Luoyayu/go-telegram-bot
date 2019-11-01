@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	helpCmds = "/start\n/redis\n/sayhi\n/home\n/gradios [5]\n/free_jp_v2ray"
+	helpCmds = "/start\n/redis\n/sayhi\n/home\n/rss\n/gradios [5]\n/free_jp_v2ray"
 
 	dbClient      *redis.Client
 	dbClientMutex sync.Mutex
@@ -26,15 +26,19 @@ var (
 )
 
 var (
-	Logger        = logger_tgbot.NewLogger()
-	AliToken      string
-	SuperUserID   string
-	SuperUserName string
+	Logger          = logger_tgbot.NewLogger()
+	AliToken        string
+	SuperUserID     string
+	SuperUserName   string
+	SmartHomeApiUrl string
+	RSSHubUrl       string
 )
 
 func init() {
 	SuperUserID = os.Getenv("SUPER_USER_ID")
 	SuperUserName = os.Getenv("SUPER_USER_NAME")
+	SmartHomeApiUrl = os.Getenv("SMART_HOME_API_URL")
+	RSSHubUrl = os.Getenv("RSSHub_Url")
 
 }
 
@@ -116,7 +120,7 @@ func main() {
 
 	go func() {
 		for {
-			if radios, err := gadioRss.GetGRadios(5); err == nil && dbClient != nil {
+			if radios, err := gadioRss.GetGRadios(5); err == nil && dbClient != nil && radios != nil {
 				gadioRss.GadioQueryAndStoreAndSend(bot, radios, dbClient, true, "", Logger, tg_tgbot.ProactiveNotice)
 			} else {
 				if err != nil {
@@ -142,7 +146,7 @@ func main() {
 			} else {
 				getAllRssSupportedSubscribe()
 			}
-			time.Sleep(1 * time.Minute) // FIXME just for test
+			time.Sleep(5 * time.Minute) // FIXME just for test
 		}
 	}()
 
@@ -198,7 +202,7 @@ func main() {
 			}
 
 			// TODO check user has unfinished task
-			if userTasksStackName := "user:" + user.Id() + ":tasks"; dbClient.LLen(userTasksStackName).Val() != 0 {
+			/*if userTasksStackName := "user:" + user.Id() + ":tasks"; dbClient.LLen(userTasksStackName).Val() != 0 {
 				if update.Message != nil {
 					err = HandleUserUnFinishedTask(userTasksStackName, dbClient.LPop(userTasksStackName).Val(), update.Message)
 					if err != nil {
@@ -212,7 +216,7 @@ func main() {
 				continue
 			} else {
 				Logger.Info("user don't have unfinished task")
-			}
+			}*/
 		}
 
 		// FIXME use redis user:id:permissions to replace the hard code
@@ -250,6 +254,13 @@ func main() {
 			//	sendList = append(sendList, sticker)
 			//	goto SendChattableMessages
 			//}
+
+			// user replay to something, must handle it now!
+			if chatMsg.ReplyToMessage != nil {
+				Logger.Warnf("user reply: %q, ans is : %q\n", chatMsg.ReplyToMessage.Text, chatMsg.Text)
+				handleChatReply(bot, &user, &update)
+				continue
+			}
 
 			// TODO reply random Sticker
 			// if message contain Sticker

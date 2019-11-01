@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/PuerkitoBio/goquery"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/luoyayu/go_telegram_bot/gadio-tgbot-plugin"
 	dbRedis "github.com/luoyayu/go_telegram_bot/redis-tgbot-plugin"
 	tg_tgbot "github.com/luoyayu/go_telegram_bot/tg-tgbot-plugin"
+	"net/http"
 
 	"strconv"
 	"strings"
@@ -54,7 +56,13 @@ const (
 )
 
 const (
-	CallbackPrefixRssSub = "rssSub_"
+	CallbackPrefixRssSub       = "rssSub_"
+	BtnIdBackToAllRssSupported = "back to all rss supported"
+)
+
+const (
+	CallbackPrefixShow  = "show"
+	BtnIdShowUserAllRss = "show user all rss"
 )
 
 // change replay markup for specified chat id
@@ -69,15 +77,94 @@ func editMessageReplyMarkup(
 	editText.ReplyMarkup = newReplyMarkup
 	return editText
 }
+func handleChatReply(bot *tgbotapi.BotAPI, user *dbRedis.User, update *tgbotapi.Update) {
+	replyMsg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+	qText := update.Message.ReplyToMessage.Text
+	Logger.Warn(qText)
+	if strings.HasPrefix(qText, CallbackPrefixRssSub) == true {
+		ans := update.Message.Text
+
+		requestRssList := strings.Split(strings.TrimRight(qText, "*"), "_")
+
+		requestRss := requestRssList[1:]
+		requestRssName := requestRss[0]
+		params := requestRss
+		Logger.Warn(ans, " ", requestRssName, " ", params)
+		if RssHubAllSubMap[requestRssName][params[1]]["type"] == "int" {
+			if _, err := strconv.ParseInt(ans, 10, 64); err != nil {
+				Logger.Error(err)
+				replyMsg.Text = "input must be int, you ans: " + ans
+				goto ReplyMsg
+			}
+		}
+		taskName := RssHubAllSubMap[requestRssName][params[1]]["path"] + ans
+		subUrl := RSSHubUrl + taskName + "?embed=false"
+		Logger.Info("sub url is ", subUrl)
+		if resp, err := http.Get(subUrl); err != nil {
+			replyMsg.Text = err.Error()
+		} else {
+			if resp.StatusCode != http.StatusOK {
+				replyMsg.Text = "we couldn't found the " + params[1] + " " + ans
+			} else {
+
+				// rssTask:youtube/channel/UCSs4A6HYKmHA2MG_0z-F0xw [pattern is rssTask:*]
+				// 1. the task add user
+				// 2. user task set add the task
+
+				if opVal := dbClient.SAdd("rssTask:"+taskName, update.Message.Chat.ID).Val(); opVal == 0 {
+					replyMsg.Text = "you have already subscribed the rss."
+					goto ReplyMsg
+				} else {
+					if opVal := dbClient.SAdd(fmt.Sprint("user:", update.Message.Chat.ID, ":rssTasks"), taskName).Val(); opVal == 0 {
+						Logger.ErrorService("rss", "fatal error, the user tasks conflict with the task set!")
+					} else {
+						if doc, err := goquery.NewDocumentFromReader(resp.Body); err != nil {
+
+						} else {
+							latestNode := doc.Find("item").First()
+							if _, err := latestNode.Html(); err != nil {
+								Logger.ErrorService("rss", "rss is wrong!")
+							} else {
+								title := latestNode.Find("title").Text()
+								pubdate := latestNode.Find("pubdate").Text()
+								link := latestNode.Find("guid").Text()
+
+								Logger.Warn("xml first node:")
+								Logger.Info("title: ", title)
+								Logger.Info("pubdate: ", pubdate)
+								Logger.Info("link: ", link)
+
+							}
+						}
+						replyMsg.Text = "the subscription is allowed, I will notice you if anything updated."
+					}
+				}
+
+			}
+		}
+
+	}
+
+ReplyMsg:
+	if replyMsg.Text == "" {
+		Logger.Warn("replyMsg is void, do nothing!")
+		return
+	}
+
+	if _, err := bot.Send(replyMsg); err != nil {
+		Logger.Error("send msg error! ", err)
+	} else {
+		Logger.Info("sending to ", replyMsg.ChatID, replyMsg.Text)
+	}
+
+}
 
 func handleChatCallback(bot *tgbotapi.BotAPI, user *dbRedis.User, update *tgbotapi.Update) {
 	callbackQuery := update.CallbackQuery
 	callbackID := callbackQuery.Data
 	Logger.Info("callbackID: ", callbackID)
 
-	_, err := bot.AnswerCallbackQuery(tgbotapi.NewCallback(callbackQuery.ID, callbackID))
-
-	if err != nil {
+	if _, err := bot.AnswerCallbackQuery(tgbotapi.NewCallback(callbackQuery.ID, callbackID)); err != nil {
 		Logger.Errorf("get Answer from Callback Query Error: %+v\n", err)
 		return
 	}
@@ -125,7 +212,7 @@ func handleChatCallback(bot *tgbotapi.BotAPI, user *dbRedis.User, update *tgbota
 		case BtnIdBackToHomeDevices:
 			_, backToError = bot.Send(editMessageReplyMarkup(callbackQuery, &HomeDevicesInlineKeyboard))
 		case BtnIdBackToAllRssSupportingSubscribes:
-			_, backToError = bot.Send(editMessageReplyMarkup(callbackQuery, &AllRssSupportSubscribeInlineKeyboard))
+			_, backToError = bot.Send(editMessageReplyMarkup(callbackQuery, &AllRssSupportSubscribedDomainInlineKeyboard))
 		}
 		if backToError != nil {
 			Logger.ErrorAndSend(&replyMsg, backToError)
@@ -156,7 +243,7 @@ func handleChatCallback(bot *tgbotapi.BotAPI, user *dbRedis.User, update *tgbota
 		switch callbackID {
 		case BtnIdUpdateGRadiosList:
 			if updateError = newGRadioListInlineKeyboard(5); updateError != nil {
-				Logger.ErrorAndSend(&replyMsg, err)
+				Logger.ErrorAndSend(&replyMsg, updateError)
 				goto ReplyMsg
 			} else {
 				_, updateError = bot.Send(editMessageReplyMarkup(callbackQuery, &GRadiosListInlineKeyboard))
@@ -226,7 +313,20 @@ func handleChatCallback(bot *tgbotapi.BotAPI, user *dbRedis.User, update *tgbota
 		}
 		goto ReplyMsg
 	} else
-	//
+	// callback with `show`
+	if (strings.HasPrefix(callbackID, CallbackPrefixShow)) == true {
+		switch callbackID {
+		case BtnIdShowUserAllRss:
+			if userAllRss := GetUserAllRss(fmt.Sprint(callbackQuery.Message.Chat.ID), dbClient); userAllRss != nil {
+				userAllRssInlineKeyboard := GetUserAllRssInlineKeyboard(userAllRss)
+				replyMsg.ReplyMarkup = userAllRssInlineKeyboard
+			} else {
+				replyMsg.Text = "you don't have any rss subscribed"
+			}
+			goto ReplyMsg
+		}
+	} else
+	// callback with `rssSub_`
 	if strings.HasPrefix(callbackID, CallbackPrefixRssSub) {
 		// rssSub_bilibili
 		// rssSub_bilibili_user_2333
@@ -235,12 +335,12 @@ func handleChatCallback(bot *tgbotapi.BotAPI, user *dbRedis.User, update *tgbota
 
 		requestRss := requestRssList[1:]
 		requestRssName := requestRss[0]
-		show := false
+		showAllAvailbleRss := false
 		if len(requestRss) == 1 {
-			show = true
+			showAllAvailbleRss = true
 		}
 
-		if show {
+		if showAllAvailbleRss {
 			if v, ok := RssHubAllSubMap[requestRssName]; ok == false {
 				Logger.ErrorfService("rssHub", "not found %s in Rss Hub All Sub Map", requestRssName)
 			} else {
@@ -252,7 +352,8 @@ func handleChatCallback(bot *tgbotapi.BotAPI, user *dbRedis.User, update *tgbota
 						subSubItem["path"]+subSubItem["help"], CallbackPrefixRssSub+requestRssName+"_"+subSubName,
 						&rssAvailableSubsInlineKeyboard, Logger)
 				}
-				tg_tgbot.OneRowOneBtn("<<back", "back to all rss supporting subscribes",
+
+				tg_tgbot.OneRowOneBtn("<< back", BtnIdBackToAllRssSupported,
 					&rssAvailableSubsInlineKeyboard, Logger)
 				_, err := bot.Send(editMessageReplyMarkup(callbackQuery, &rssAvailableSubsInlineKeyboard))
 				if err != nil {
@@ -263,12 +364,12 @@ func handleChatCallback(bot *tgbotapi.BotAPI, user *dbRedis.User, update *tgbota
 		} else {
 			params := requestRss
 			Logger.Infof("%+v\n", params)
-			// store message state by Chat ID
-			Logger.Info(update.UpdateID)
-
-			// push params to list user:user.Id():task_msgID
-			dbClient.LPush("user:"+user.Id()+":tasks", callbackID+"_"+fmt.Sprint(callbackQuery.Message.MessageID))
-			replyMsg.Text = "please input by the format: `:` mean the param is necessary" + RssHubAllSubMap[requestRssName][params[0]]["help"]
+			// rssSub_bilibili_user_2333
+			replyMsg.Text = strings.Join([]string{
+				"rssSub", requestRssName, params[1], RssHubAllSubMap[requestRssName][params[1]]["help"],
+			}, "_")
+			replyMsg.ReplyMarkup = tgbotapi.ForceReply{ForceReply: true}
+			goto ReplyMsg
 
 		}
 
@@ -297,12 +398,12 @@ HandleRegister:
 
 ReplyMsg:
 	if replyMsg.Text == "" {
-		Logger.Error("replyMsg is void, do nothing!")
+		Logger.Warn("replyMsg is void, do nothing!")
 		return
 	}
-	_, err = bot.Send(replyMsg)
-	if err != nil {
-		Logger.Info("send msg error! ", err)
+
+	if _, err := bot.Send(replyMsg); err != nil {
+		Logger.Error("send msg error! ", err)
 	} else {
 		Logger.Info("sending to ", replyMsg.ChatID, replyMsg.Text)
 	}

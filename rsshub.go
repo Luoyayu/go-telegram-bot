@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/go-redis/redis/v7"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	tg_tgbot "github.com/luoyayu/go_telegram_bot/tg-tgbot-plugin"
 	"net/http"
@@ -23,34 +24,39 @@ type rssServicesEntity struct {
 }*/
 
 var (
-	AllRssSupportSubscribeInlineKeyboard = tgbotapi.NewInlineKeyboardMarkup()
+	AllRssSupportSubscribedDomainInlineKeyboard = tgbotapi.NewInlineKeyboardMarkup()
 
 	// RssHubAllSubMap rssAllMap["youtube"]["user"]["path"]
 	RssHubAllSubMap = map[string]map[string]map[string]string{
 		"youtube": {
 			"user": {
 				"path": "youtube/user/",
-				"help": ":username",
+				"help": "username*",
+				"type": "string",
 			},
 			"channel": {
 				"path": "youtube/channel/",
-				"help": ":id",
+				"help": "id*",
+				"type": "string",
 			},
 		},
 		"bilibili": {
 			"user": {
 				"path": "bilibili/user/video/",
-				"help": ":uid",
+				"help": "uid*",
+				"type": "int",
 			},
 			"live": {
 				"path": "bilibili/live/room/",
-				"help": ":roomID",
+				"help": "roomID*",
+				"type": "int",
 			},
 		},
 		"github": {
 			"repos": {
 				"path": "github/repos/",
-				"help": ":user",
+				"help": "userName*",
+				"type": "string",
 			},
 		},
 	}
@@ -61,14 +67,16 @@ func getAllRssSupportedSubscribe() {
 	// http://127.0.0.1:1200/youtube/user/ryoya1983
 	// http://127.0.0.1:1200/youtube/channel/UCkDbLiXbx6CIRZuyW9sZK1g
 
-	AllRssSupportSubscribeInlineKeyboard = tgbotapi.NewInlineKeyboardMarkup()
+	AllRssSupportSubscribedDomainInlineKeyboard = tgbotapi.NewInlineKeyboardMarkup()
 	for k, _ := range RssHubAllSubMap {
 		Logger.InfofService("rssHub", k+" is up.")
-		tg_tgbot.OneRowOneBtn(k, "rssSub_"+k, &AllRssSupportSubscribeInlineKeyboard, Logger)
+		tg_tgbot.OneRowOneBtn(k, "rssSub_"+k, &AllRssSupportSubscribedDomainInlineKeyboard, Logger)
 	}
-	tg_tgbot.OneRowOneBtn(">> close", BtnIdClose, &AllRssSupportSubscribeInlineKeyboard, Logger)
 
-	Logger.InfoService("rssHub", RssHubAllSubMap["youtube"]["user"]["path"] == "youtube/user/")
+	tg_tgbot.OneRowOneBtn("my rss list", BtnIdShowUserAllRss, &AllRssSupportSubscribedDomainInlineKeyboard, Logger)
+	tg_tgbot.OneRowOneBtn(">> close", BtnIdClose, &AllRssSupportSubscribedDomainInlineKeyboard, Logger)
+
+	Logger.InfoService("rssHub", "test RssHubAllSubMap string index", RssHubAllSubMap["youtube"]["user"]["path"] == "youtube/user/")
 }
 
 func checkRssHubAvailable() (err error) {
@@ -82,4 +90,17 @@ func checkRssHubAvailable() (err error) {
 	}
 	RssHubAvailableMutex.Unlock()
 	return
+}
+
+func GetUserAllRss(userId string, dbClient *redis.Client) []string {
+	return dbClient.SMembers("user:" + userId + ":rssTasks").Val()
+}
+
+func GetUserAllRssInlineKeyboard(userRss []string) *tgbotapi.InlineKeyboardMarkup {
+	userAllRssInlineKeyboard := tgbotapi.NewInlineKeyboardMarkup()
+	for _, subEntity := range userRss {
+		tg_tgbot.OneRowOneBtn(subEntity, "user_rss_"+subEntity, &userAllRssInlineKeyboard, Logger)
+	}
+	tg_tgbot.OneRowOneBtn("<< back", BtnIdBackToAllRssSupportingSubscribes, &userAllRssInlineKeyboard, Logger)
+	return &userAllRssInlineKeyboard
 }

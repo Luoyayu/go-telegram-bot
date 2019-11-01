@@ -90,7 +90,7 @@ func GadioQueryAndStoreAndSend(bot *tgbotapi.BotAPI, gadio *Radios, rc *redis.Cl
 			if send == true {
 				proactiveNotice(bot, sendToUser, dataEntity.Attributes.PublishedAt+"\n"+
 					"https://www.gcores.com/radios/"+dataEntity.ID, nil, logger)
-				logger.InfoService("gadio", "send msg to"+sendToUser)
+				logger.InfoService("gadio", "send msg to ", sendToUser)
 			}
 		}
 	}
